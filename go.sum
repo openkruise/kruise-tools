@@ -270,6 +270,8 @@ github.com/openkruise/kruise-api v0.4.1-a h1:UngDhbAESEV90CgrNKfPhumXODe3IiRxAMY
 github.com/openkruise/kruise-api v0.4.1-a/go.mod h1:8b4nr2/2XaMrUNYVCf58adH7ImYTdT5JHEgP7igN7OY=
 github.com/openkruise/kruise-api v0.4.1 h1:56FaurLlCkFKktFTeugCZjPHRSMnKGdbNCu4n8HP/gY=
 github.com/openkruise/kruise-api v0.4.1/go.mod h1:YAYQQmmDzpORlFxYJbh2cme9y3POCkvKu9cblXVu2w0=
+github.com/openkruise/kruise-api v0.5.0 h1:rs3hY4pEVNMWVWWNGv/gpq9bEfSWzZeaFNfnkFHoxD0=
+github.com/openkruise/kruise-api v0.5.0/go.mod h1:GvXRxAwJ8vE/DitSlArXAGrDvoL5t+MWjCnNdvmCN94=
 github.com/pborman/uuid v0.0.0-20170612153648-e790cca94e6c h1:MUyE44mTvnI5A0xrxIxaMqoWFzPfQvtE2IWUollMDMs=
 github.com/pborman/uuid v0.0.0-20170612153648-e790cca94e6c/go.mod h1:VyrYX9gd7irzKovcSS6BIIEwPRkP2Wm2m9ufcdFSJ34=
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=

@@ -53,6 +53,9 @@ func DeploymentToCloneSet(deploy *apps.Deployment) *appsv1alpha1.CloneSet {
 		if from.Spec.Strategy.RollingUpdate.MaxUnavailable != nil {
 			cs.Spec.UpdateStrategy.MaxUnavailable = from.Spec.Strategy.RollingUpdate.MaxUnavailable
 		}
+		if from.Spec.Strategy.RollingUpdate.MaxSurge != nil {
+			cs.Spec.UpdateStrategy.MaxSurge = from.Spec.Strategy.RollingUpdate.MaxSurge
+		}
 	}
 	return cs
 }
