@@ -20,12 +20,13 @@ import (
 	"fmt"
 	"time"
 
-	cmdutil "github.com/openkruise/kruise-tools/cmd/util"
+	internalcmdutil "github.com/openkruise/kruise-tools/pkg/cmd/util"
 	"github.com/openkruise/kruise-tools/pkg/creation"
 	clonesetcreation "github.com/openkruise/kruise-tools/pkg/creation/cloneset"
 	"github.com/openkruise/kruise-tools/pkg/migration"
 	clonesetmigration "github.com/openkruise/kruise-tools/pkg/migration/cloneset"
 	"github.com/spf13/cobra"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 func (o *migrateOptions) migrateCloneSet(f cmdutil.Factory, cmd *cobra.Command) error {
@@ -46,7 +47,7 @@ func (o *migrateOptions) migrateCloneSet(f cmdutil.Factory, cmd *cobra.Command) 
 			return err
 		}
 
-		cmdutil.Print(fmt.Sprintf("Successfully created from %s/%s to %s/%s", o.From, o.SrcName, o.To, o.DstName))
+		internalcmdutil.Print(fmt.Sprintf("Successfully created from %s/%s to %s/%s", o.From, o.SrcName, o.To, o.DstName))
 
 	} else {
 
@@ -80,13 +81,13 @@ func (o *migrateOptions) migrateCloneSet(f cmdutil.Factory, cmd *cobra.Command) 
 			}
 
 			if newResult.SrcMigratedReplicas != oldResult.SrcMigratedReplicas || newResult.DstMigratedReplicas != oldResult.DstMigratedReplicas {
-				cmdutil.Print(fmt.Sprintf("Migration progress: %s/%s scale in %d, %s/%s scale out %d",
+				internalcmdutil.Print(fmt.Sprintf("Migration progress: %s/%s scale in %d, %s/%s scale out %d",
 					o.From, o.SrcName, newResult.SrcMigratedReplicas, o.To, o.DstName, newResult.DstMigratedReplicas))
 			}
 
 			switch newResult.State {
 			case migration.MigrateSucceeded:
-				cmdutil.Print(fmt.Sprintf("Successfully migrated %v replicas from %s/%s to %s/%s",
+				internalcmdutil.Print(fmt.Sprintf("Successfully migrated %v replicas from %s/%s to %s/%s",
 					newResult.DstMigratedReplicas, o.From, o.SrcName, o.To, o.DstName))
 				return nil
 			case migration.MigrateFailed:
