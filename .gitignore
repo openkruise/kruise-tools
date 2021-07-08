@@ -16,3 +16,5 @@ bin/
 vendor/
 
 .idea/
+
+just_for_test/
