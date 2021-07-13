@@ -190,7 +190,7 @@ func (c *control) Query(ID types.UID) (migration.Result, error) {
 
 func (c *control) addEventHandler(gvk schema.GroupVersionKind) error {
 	if _, ok := c.handledGVKs[gvk]; !ok {
-		informer, err := c.cache.GetInformerForKind(gvk)
+		informer, err := c.cache.GetInformerForKind(context.Background(), gvk)
 		if err != nil {
 			return fmt.Errorf("failed to get informer for %v: %v", gvk, err)
 		}

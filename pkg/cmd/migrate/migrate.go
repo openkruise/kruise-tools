@@ -19,9 +19,10 @@ package migrate
 import (
 	"fmt"
 
-	cmdutil "github.com/openkruise/kruise-tools/cmd/util"
 	"github.com/openkruise/kruise-tools/pkg/api"
 	"github.com/spf13/cobra"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 type migrateOptions struct {
@@ -40,14 +41,14 @@ type migrateOptions struct {
 	MaxSurge       int32
 	TimeoutSeconds int32
 
-	cmdutil.IOStreams
+	genericclioptions.IOStreams
 }
 
-func newMigrateOptions(ioStreams cmdutil.IOStreams) *migrateOptions {
+func newMigrateOptions(ioStreams genericclioptions.IOStreams) *migrateOptions {
 	return &migrateOptions{IOStreams: ioStreams}
 }
 
-func NewCmdMigrate(f cmdutil.Factory, ioStreams cmdutil.IOStreams) *cobra.Command {
+func NewCmdMigrate(f cmdutil.Factory, ioStreams genericclioptions.IOStreams) *cobra.Command {
 	o := newMigrateOptions(ioStreams)
 
 	cmd := &cobra.Command{
