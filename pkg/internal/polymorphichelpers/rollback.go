@@ -21,10 +21,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
+	"sort"
+
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	internalapi "github.com/openkruise/kruise-tools/pkg/api"
 	internalapps "github.com/openkruise/kruise-tools/pkg/internal/apps"
-	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -83,6 +85,12 @@ func (v *RollbackVisitor) VisitPod(kind internalapps.GroupKindElement)          
 func (v *RollbackVisitor) VisitReplicaSet(kind internalapps.GroupKindElement)            {}
 func (v *RollbackVisitor) VisitReplicationController(kind internalapps.GroupKindElement) {}
 func (v *RollbackVisitor) VisitCronJob(kind internalapps.GroupKindElement)               {}
+func (v *RollbackVisitor) VisitAdvancedStatefulSet(kind internalapps.GroupKindElement) {
+	mgr := internalapi.NewManager()
+	cr := mgr.GetAPIReader()
+	c := mgr.GetClient()
+	v.result = &AdvancedStatefulSetRollbacker{cr: cr, c: c, k: v.clientset}
+}
 
 // RollbackerFor returns an implementation of Rollbacker interface for the given schema kind
 func RollbackerFor(kind schema.GroupKind, c kubernetes.Interface) (Rollbacker, error) {
@@ -475,6 +483,65 @@ func (r *CloneSetRollbacker) Rollback(obj runtime.Object,
 	return rollbackSuccess, nil
 }
 
+type AdvancedStatefulSetRollbacker struct {
+	cr client.Reader
+	c  client.Client
+	k  kubernetes.Interface
+}
+
+func (r *AdvancedStatefulSetRollbacker) Rollback(obj runtime.Object,
+	updatedAnnotations map[string]string,
+	toRevision int64,
+	dryRunStrategy cmdutil.DryRunStrategy) (string, error) {
+	if toRevision < 0 {
+		return "", revisionNotFoundErr(toRevision)
+	}
+	accessor, err := meta.Accessor(obj)
+	if err != nil {
+		return "", fmt.Errorf("failed to create accessor for kind %v: %s", obj.GetObjectKind(), err.Error())
+	}
+	asts, history, err := advancedstsHistory(r.k.AppsV1(), r.cr, accessor.GetNamespace(), accessor.GetName())
+	if err != nil {
+		return "", err
+	}
+	if toRevision == 0 && len(history) <= 1 {
+		return "", fmt.Errorf("no latest revision to roll back to")
+	}
+	toHistory := findHistory(toRevision, history)
+	if toHistory == nil {
+		return "", revisionNotFoundErr(toRevision)
+	}
+	if dryRunStrategy == cmdutil.DryRunClient {
+		appliedSS, err := applyAdvancedStatefulSetRevision(asts, toHistory)
+		if err != nil {
+			return "", err
+		}
+		return printPodTemplate(&appliedSS.Spec.Template)
+	}
+	// Skip if the revision already matches current CloneSet
+	done, err := astsMatch(asts, toHistory)
+	if err != nil {
+		return "", err
+	}
+	if done {
+		return fmt.Sprintf("%s (current template already matches revision %d)", rollbackSkipped, toRevision), nil
+	}
+
+	// Restore revision
+	if dryRunStrategy == cmdutil.DryRunServer {
+		if err = r.c.Patch(context.TODO(), asts, client.RawPatch(types.MergePatchType,
+			toHistory.Data.Raw), client.DryRunAll); err != nil {
+			return "", fmt.Errorf("failed restoring revision %d: %v", toRevision, err)
+		}
+	}
+	if err = r.c.Patch(context.TODO(), asts, client.RawPatch(types.MergePatchType,
+		toHistory.Data.Raw)); err != nil {
+		return "", fmt.Errorf("failed restoring revision %d: %v", toRevision, err)
+	}
+
+	return rollbackSuccess, nil
+}
+
 var appsCodec = scheme.Codecs.LegacyCodec(appsv1.SchemeGroupVersion)
 
 // applyRevision returns a new StatefulSet constructed by restoring the state in revision to set. If the returned error
@@ -510,9 +577,36 @@ func applyCloneSetRevision(cs *kruiseappsv1alpha1.CloneSet,
 	return result, nil
 }
 
+var kruisev1beta1AppsCodec = scheme.Codecs.LegacyCodec(kruiseappsv1beta1.SchemeGroupVersion)
+
+// apply  applyAdvancedStatefulSetRevision returns a new Advanced StatefulSet constructed by restoring the state in revision to set.
+// If the returned error is nil, the returned Advanced StatefulSet is valid.
+func applyAdvancedStatefulSetRevision(asts *kruiseappsv1beta1.StatefulSet,
+	revision *appsv1.ControllerRevision) (*kruiseappsv1beta1.StatefulSet, error) {
+	patched, err := strategicpatch.StrategicMergePatch([]byte(runtime.EncodeOrDie(kruisev1beta1AppsCodec, asts)), revision.Data.Raw, asts)
+	if err != nil {
+		return nil, err
+	}
+	result := &kruiseappsv1beta1.StatefulSet{}
+	err = json.Unmarshal(patched, result)
+	if err != nil {
+		return nil, err
+	}
+	return nil, err
+}
+
 // statefulsetMatch check if the given StatefulSet's template matches the template stored in the given history.
 func statefulsetMatch(ss *appsv1.StatefulSet, history *appsv1.ControllerRevision) (bool, error) {
 	patch, err := getStatefulSetPatch(ss)
+	if err != nil {
+		return false, err
+	}
+	return bytes.Equal(patch, history.Data.Raw), nil
+}
+
+// astsMatch check if the given Advanced StatefulSet's template matched the template stored in the given history
+func astsMatch(asts *kruiseappsv1beta1.StatefulSet, history *appsv1.ControllerRevision) (bool, error) {
+	patch, err := getAdvancedStatefulSetPatch(asts)
 	if err != nil {
 		return false, err
 	}
@@ -573,7 +667,28 @@ func getCloneSetPatch(cs *kruiseappsv1alpha1.CloneSet) ([]byte, error) {
 	objCopy["spec"] = specCopy
 	patch, err := json.Marshal(objCopy)
 	return patch, err
+}
 
+// getAdvancedStatefulSetPatch returns a strategic merge patch that can be applied to restore a Advanced StatefulSet to
+// a previous version
+func getAdvancedStatefulSetPatch(asts *kruiseappsv1beta1.StatefulSet) ([]byte, error) {
+	str, err := runtime.Encode(kruisev1beta1AppsCodec, asts)
+	if err != nil {
+		return nil, err
+	}
+	var raw map[string]interface{}
+	if err := json.Unmarshal([]byte(str), &raw); err != nil {
+		return nil, err
+	}
+	objCopy := make(map[string]interface{})
+	specCopy := make(map[string]interface{})
+	spec := raw["spec"].(map[string]interface{})
+	template := spec["template"].(map[string]interface{})
+	specCopy["template"] = template
+	template["$patch"] = "replace"
+	objCopy["spec"] = specCopy
+	patch, err := json.Marshal(objCopy)
+	return patch, err
 }
 
 // findHistory returns a controllerrevision of a specific revision from the given controllerrevisions.

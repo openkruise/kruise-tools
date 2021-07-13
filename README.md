@@ -125,11 +125,11 @@ $ kubectl-kruise migrate --help
    * [x] status
    * [x] pause
    * [x] resume
-   * [ ] restart
+   * [x] restart
    
 #### kubectl kruise rollout for Advanced StatefulSet
-   * [ ]  undo
-   * [ ] history
+   * [x]  undo
+   * [x] history
    * [ ] status
    * [ ] pause
    * [ ] resume

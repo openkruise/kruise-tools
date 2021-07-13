@@ -35,6 +35,7 @@ type KindVisitor interface {
 	VisitStatefulSet(kind GroupKindElement)
 	VisitCronJob(kind GroupKindElement)
 	VisitCloneSet(kind GroupKindElement)
+	VisitAdvancedStatefulSet(kind GroupKindElement)
 }
 
 // GroupKindElement defines a Kubernetes API group elem
@@ -61,6 +62,8 @@ func (elem GroupKindElement) Accept(visitor KindVisitor) error {
 		visitor.VisitCronJob(elem)
 	case elem.GroupMatch("apps.kruise.io") && elem.Kind == "CloneSet":
 		visitor.VisitCloneSet(elem)
+	case elem.GroupMatch("apps.kruise.io") && elem.Kind == "StatefulSet":
+		visitor.VisitAdvancedStatefulSet(elem)
 	default:
 		return fmt.Errorf("no visitor method exists for %v", elem)
 	}
