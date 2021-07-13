@@ -40,6 +40,9 @@ var (
 	historyExample = templates.Examples(`
 		# View the rollout history of a cloneset
 		kubectl-kruise rollout history cloneset/abc
+		
+		# View the rollout history of a advanced statefulset
+		kubectl-kruise rollout history asts/abc
 
 		# View the details of daemonset revision 3
 		kubectl-kruise rollout history daemonset/abc --revision=3`)
