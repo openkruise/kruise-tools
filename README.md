@@ -1,10 +1,87 @@
-# kruise-tools
-Tools to use with the Kruise libraries.
+# kubectl-kruise
+kubectl plugin for OpenKruise
 
-## Use with command-line
+`kubectl` supports a plug-in mechanism, but the rollout and other related operations provided by this tool itself only support the native workload resources of Kubernetes.
+Therefore, we need to create a kubectl plugin for OpenKruise, through which community users can use kubectl to operate Kruise’s workload resources.
+
+So, `kubectl-kruise` was created.
+
+### How to use
+The development of  `kubectl-kruise`  is in progress, if you wanna to experience it, you can clone it and make it:
+
+```
+make build && cp kubectl-kruise /usr/local/bin
+
+```
+
+### Use with command-line
+
+Then you can operate Openkruise resource by `kubectl-kruise`.
+By now the `rollout` cmd such as `rollout undo`, `rollout status`, `rollout history` have been developed.
+
+![](https://tva1.sinaimg.cn/large/008i3skNgy1gqmmcx5nlqj31eo0je420.jpg)
+
 
 ```bash
-$ kruise --help
+$kubectl-kruise --help
+kubectl-kruise controls the OpenKruise manager.
+
+ Find more information at: https://openkruise.io/en-us/docs/what_is_openkruise.html
+
+Aliases:
+kubectl-kruise, kk
+
+CloneSet Commands:
+  rollout       Manage the rollout of a resource
+  scale         Set a new size for a Deployment, ReplicaSet or Replication Controller
+  autoscale     Auto-scale a Deployment, ReplicaSet, or ReplicationController
+  migrate       Migrate from K8s original workloads to Kruise workloads
+
+Cluster Management Commands:
+  certificate   Modify certificate resources.
+  cluster-info  Display cluster info
+  top           Display Resource (CPU/Memory/Storage) usage.
+  cordon        Mark node as unschedulable
+  uncordon      Mark node as schedulable
+  drain         Drain node in preparation for maintenance
+  taint         Update the taints on one or more nodes
+
+Troubleshooting and Debugging Commands:
+  describe      Show details of a specific resource or group of resources
+  logs          Print the logs for a container in a pod
+  attach        Attach to a running container
+  exec          Execute a command in a container
+  port-forward  Forward one or more local ports to a pod
+  debug         Attach a debug container to a running pod
+
+Advanced Commands:
+  diff          Diff live version against would-be applied version
+  apply         Apply a configuration to a resource by filename or stdin
+  patch         Update field(s) of a resource using strategic merge patch
+  replace       Replace a resource by filename or stdin
+  wait          Experimental: Wait for a specific condition on one or many resources.
+  kustomize     Build a kustomization target from a directory or a remote url.
+
+Other Commands:
+  api-resources Print the supported API resources on the server
+  api-versions  Print the supported API versions on the server, in the form of "group/version"
+  config        Modify kubeconfig files
+  plugin        Provides utilities for interacting with plugins.
+  version       Print the client and server version information
+
+Usage:
+  kubectl-kruise [flags] [options]
+
+Use "kubectl-kruise <command> --help" for more information about a given command.
+Use "kubectl-kruise options" for a list of global command-line options (applies to all commands).
+
+```
+
+Currently it also supports to migrate Pods from Deployment to CloneSet by `kruise migrate [options]`.
+You can also import `github.com/openkruise/kruise-tools/pkg/migration` and trigger migration with its api.
+
+```bash
+$ kubectl-kruise migrate --help
   kruise is a command-line tool to use Kruise.
   
   Usage:
@@ -38,5 +115,36 @@ $ kruise --help
   Use "kruise [command] --help" for more information about a command.
 ```
 
-Currently it supports to migrate Pods from Deployment to CloneSet by `kruise migrate [options]`.
-You can also import `github.com/openkruise/kruise-tools/pkg/migration` and trigger migration with its api.
+### TODO
+#### kubectl kruise migrate
+   * [x] migrate [options]
+   
+#### kubectl kruise rollout for CloneSet workload
+   * [x] undo
+   * [x] history
+   * [x] status
+   * [x] pause
+   * [x] resume
+   * [ ] restart
+   
+#### kubectl kruise rollout for Advanced StatefulSet
+   * [ ]  undo
+   * [ ] history
+   * [ ] status
+   * [ ] pause
+   * [ ] resume
+   * [ ] restart
+   
+#### kubectl kruise set SUBCOMMAND [options]
+   * [ ] kubectl kruise set image 
+   * [ ] kubectl kruise set env
+   
+#### kubectl kruise autoscale SUBCOMMAND [options]
+   * [ ] kubectl kruise autoscale 
+ 
+#### kubectl kruise run 
+   * [ ] kubectl kruise run NAME --image=image [--env="key=value"] [--port=port] [--dry-run=server | client | none] [--overrides=inline-json] [flags]
+  
+
+### Contributing
+We encourage you to help out by reporting issues, improving documentation, fixing bugs, or adding new features. 
