@@ -58,16 +58,16 @@ var (
 
 	undoExample = templates.Examples(`
 		# Rollback to the previous cloneset
-		kubectl rollout undo cloneset/abc
+		kubectl-kruise rollout undo cloneset/abc
 
 		# Rollback to the previous Advanced StatefulSet
-		kubectl rollout undo asts/abc
+		kubectl-kruise rollout undo asts/abc
 
 		# Rollback to daemonset revision 3
-		kubectl rollout undo daemonset/abc --to-revision=3
+		kubectl-kruise rollout undo daemonset/abc --to-revision=3
 
 		# Rollback to the previous deployment with dry-run
-		kubectl rollout undo --dry-run=server deployment/abc`)
+		kubectl-kruise rollout undo --dry-run=server deployment/abc`)
 )
 
 // NewRolloutUndoOptions returns an initialized UndoOptions instance

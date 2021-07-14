@@ -79,7 +79,7 @@ func NewRolloutHistoryOptions(streams genericclioptions.IOStreams) *RolloutHisto
 func NewCmdRolloutHistory(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	o := NewRolloutHistoryOptions(streams)
 
-	validArgs := []string{"deployment", "daemonset", "statefulset", "cloneset"}
+	validArgs := []string{"deployment", "daemonset", "statefulset", "cloneset", "advanced statefulset"}
 
 	cmd := &cobra.Command{
 		Use:                   "history (TYPE NAME | TYPE/NAME) [flags]",
