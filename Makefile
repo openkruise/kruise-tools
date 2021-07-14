@@ -9,7 +9,7 @@ default: build
 build: plugin
 
 plugin:
-	GO111MODULE=on CGO_ENABLED=0 GOOS=${GOOS} go build -ldflags '$(LDFLAGS)' -o kubectl-kruise cmd/plugin/main.go
+	GO111MODULE=on CGO_ENABLED=0 GOOS=${GOOS} go build -ldflags '$(LDFLAGS)' -o bin/kubectl-kruise cmd/plugin/main.go
 
 
 check:

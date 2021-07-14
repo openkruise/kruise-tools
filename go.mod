@@ -2,7 +2,6 @@ module github.com/openkruise/kruise-tools
 
 go 1.16
 
-
 require (
 	github.com/coreos/bbolt v1.3.3 // indirect
 	github.com/coreos/etcd v3.3.17+incompatible // indirect
@@ -19,7 +18,7 @@ require (
 	k8s.io/cli-runtime v0.21.0
 	k8s.io/client-go v0.21.0
 	k8s.io/component-base v0.21.0
-	k8s.io/klog v1.0.0 // indirect
+	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.21.0
 	sigs.k8s.io/controller-runtime v0.6.3
 	sigs.k8s.io/structured-merge-diff v1.0.1 // indirect
