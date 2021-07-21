@@ -17,6 +17,7 @@ limitations under the License.
 package api
 
 import (
+	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
 	"sync"
 
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
@@ -42,6 +43,7 @@ var Scheme = scheme.Scheme
 func init() {
 	_ = clientgoscheme.AddToScheme(Scheme)
 	_ = kruiseappsv1alpha1.AddToScheme(Scheme)
+	_ = kruiseappsv1beta1.AddToScheme(Scheme)
 }
 
 func NewManager() ctrl.Manager {

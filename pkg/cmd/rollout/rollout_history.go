@@ -40,6 +40,9 @@ var (
 	historyExample = templates.Examples(`
 		# View the rollout history of a cloneset
 		kubectl-kruise rollout history cloneset/abc
+		
+		# View the rollout history of a advanced statefulset
+		kubectl-kruise rollout history asts/abc
 
 		# View the details of daemonset revision 3
 		kubectl-kruise rollout history daemonset/abc --revision=3`)
@@ -76,7 +79,7 @@ func NewRolloutHistoryOptions(streams genericclioptions.IOStreams) *RolloutHisto
 func NewCmdRolloutHistory(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	o := NewRolloutHistoryOptions(streams)
 
-	validArgs := []string{"deployment", "daemonset", "statefulset", "cloneset"}
+	validArgs := []string{"deployment", "daemonset", "statefulset", "cloneset", "advanced statefulset"}
 
 	cmd := &cobra.Command{
 		Use:                   "history (TYPE NAME | TYPE/NAME) [flags]",
