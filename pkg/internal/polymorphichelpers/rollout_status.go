@@ -19,7 +19,9 @@ package polymorphichelpers
 
 import (
 	"fmt"
+
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
+	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
 
 	appsv1 "k8s.io/api/apps/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -46,6 +48,9 @@ func StatusViewerFor(kind schema.GroupKind) (StatusViewer, error) {
 		return &StatefulSetStatusViewer{}, nil
 	case kruiseappsv1alpha1.SchemeGroupVersion.WithKind("CloneSet").GroupKind():
 		return &CloneSetStatusViewer{}, nil
+
+	case kruiseappsv1beta1.SchemeGroupVersion.WithKind("StatefulSet").GroupKind():
+		return &AdvancedStatefulSetStatusViewer{}, nil
 	}
 	return nil, fmt.Errorf("no status viewer has been implemented for %v", kind)
 }
@@ -61,6 +66,9 @@ type StatefulSetStatusViewer struct{}
 
 // CloneSetViewer implements the StatusViewer interface
 type CloneSetStatusViewer struct{}
+
+// AdvancedStatefulSetStatusViewer  implements the StatusViewer interface
+type AdvancedStatefulSetStatusViewer struct{}
 
 // Status returns a message describing deployment status, and a bool value indicating if the status is considered done.
 func (s *DeploymentStatusViewer) Status(obj runtime.Unstructured, revision int64) (string, bool, error) {
@@ -186,4 +194,33 @@ func (s *CloneSetStatusViewer) Status(obj runtime.Unstructured, revision int64) 
 	}
 
 	return fmt.Sprintf("CloneSet rolling update complete %d pods at revision %s...\n", cs.Status.AvailableReplicas, cs.Status.UpdateRevision), true, nil
+}
+
+// Status returns a message describing advanced statefulset status, and a bool value indicating if the status is considered done.
+func (s *AdvancedStatefulSetStatusViewer) Status(obj runtime.Unstructured, revision int64) (string, bool, error) {
+	asts := &kruiseappsv1beta1.StatefulSet{}
+	err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), asts)
+	if err != nil {
+		return "", false, fmt.Errorf("failed to convert %T to %T: %v", obj, asts, err)
+	}
+
+	// check InPlaceOnly and InPlacePossible UpdateStrategy
+	if asts.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType {
+		if asts.Spec.Replicas != nil && asts.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
+			if asts.Status.UpdatedReplicas < (*asts.Spec.Replicas - *asts.Spec.UpdateStrategy.RollingUpdate.Partition) {
+				return fmt.Sprintf("Waiting for partitioned roll out to finish:%d out of %d new pods has been updated...\n",
+					asts.Status.UpdatedReplicas, *asts.Spec.Replicas-*asts.Spec.UpdateStrategy.RollingUpdate.Partition), false, nil
+			}
+		}
+	}
+
+	if asts.Status.ObservedGeneration == 0 || asts.Generation > asts.Status.ObservedGeneration {
+		return "Waiting for Advanced StatefulSet spec update to be observed...\n", false, nil
+	}
+
+	if asts.Spec.Replicas != nil && asts.Status.ReadyReplicas < *asts.Spec.Replicas {
+		return fmt.Sprintf("Waiting for %d pods to be ready...\n", *asts.Spec.Replicas-asts.Status.ReadyReplicas), false, nil
+	}
+	return fmt.Sprintf("Advanced StatefulSet rolling update complete %d pods at revision %s...\n", asts.Status.AvailableReplicas, asts.Status.UpdateRevision), true, nil
+
 }

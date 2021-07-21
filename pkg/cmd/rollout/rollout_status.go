@@ -19,10 +19,10 @@ package rollout
 import (
 	"context"
 	"fmt"
-	internalpolymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"time"
 
 	internalapi "github.com/openkruise/kruise-tools/pkg/api"
+	internalpolymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -56,8 +56,14 @@ var (
 		use --revision=N where N is the revision you need to watch for.`)
 
 	statusExample = templates.Examples(`
+		# Watch the rollout status of a deployment
+		kubectl-kruise rollout status deployment/nginx	
+
 		# Watch the rollout status of a cloneset
-		kubectl-kruise rollout status cloneset/nginx`)
+		kubectl-kruise rollout status cloneset/nginx
+
+		# Watch the rollout status of a advanced statefulset
+		kubectl-kruise rollout status asts/nginx`)
 )
 
 // RolloutStatusOptions holds the command-line options for 'rollout status' sub command
@@ -95,7 +101,7 @@ func NewRolloutStatusOptions(streams genericclioptions.IOStreams) *RolloutStatus
 func NewCmdRolloutStatus(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	o := NewRolloutStatusOptions(streams)
 
-	validArgs := []string{"deployment", "daemonset", "statefulset", "cloneset"}
+	validArgs := []string{"deployment", "daemonset", "statefulset", "cloneset", "advanced statefulset"}
 
 	cmd := &cobra.Command{
 		Use:                   "status (TYPE NAME | TYPE/NAME) [flags]",

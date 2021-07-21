@@ -21,10 +21,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
 	"sort"
 
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
+	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
 	internalapi "github.com/openkruise/kruise-tools/pkg/api"
 	internalapps "github.com/openkruise/kruise-tools/pkg/internal/apps"
 
