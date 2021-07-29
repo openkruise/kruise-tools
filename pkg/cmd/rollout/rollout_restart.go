@@ -79,7 +79,7 @@ func NewRolloutRestartOptions(streams genericclioptions.IOStreams) *RestartOptio
 func NewCmdRolloutRestart(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	o := NewRolloutRestartOptions(streams)
 
-	validArgs := []string{"deployment", "daemonset", "statefulset"}
+	validArgs := []string{"deployment", "daemonset", "statefulset", "cloneset"}
 
 	cmd := &cobra.Command{
 		Use:                   "restart RESOURCE",

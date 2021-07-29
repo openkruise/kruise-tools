@@ -14,7 +14,7 @@ make build && cp kubectl-kruise /usr/local/bin
 
 ```
 
-### Use with command-line
+### Use with command-line 
 
 Then you can operate Openkruise resource by `kubectl-kruise`.
 By now the `rollout` cmd such as `rollout undo`, `rollout status`, `rollout history` have been developed.
