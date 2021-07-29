@@ -19,8 +19,8 @@ package rollout
 
 import (
 	"fmt"
-	internalapi "github.com/openkruise/kruise-tools/pkg/api"
 
+	internalapi "github.com/openkruise/kruise-tools/pkg/api"
 	internalpolymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
 
