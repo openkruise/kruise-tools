@@ -130,7 +130,7 @@ $ kubectl-kruise migrate --help
 #### kubectl kruise rollout for Advanced StatefulSet
    * [x]  undo
    * [x] history
-   * [ ] status
+   * [x] status
    * [ ] pause
    * [ ] resume
    * [ ] restart
@@ -142,9 +142,6 @@ $ kubectl-kruise migrate --help
 #### kubectl kruise autoscale SUBCOMMAND [options]
    * [ ] kubectl kruise autoscale 
  
-#### kubectl kruise run 
-   * [ ] kubectl kruise run NAME --image=image [--env="key=value"] [--port=port] [--dry-run=server | client | none] [--overrides=inline-json] [flags]
-  
 
 ### Contributing
 We encourage you to help out by reporting issues, improving documentation, fixing bugs, or adding new features. 
