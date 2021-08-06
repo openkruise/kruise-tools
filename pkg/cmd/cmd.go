@@ -27,6 +27,7 @@ import (
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/tools/clientcmd"
+	kset "github.com/openkruise/kruise-tools/pkg/cmd/set"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/kubectl/pkg/cmd/apiresources"
 	"k8s.io/kubectl/pkg/cmd/apply"
@@ -374,6 +375,12 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 	ioStreams := genericclioptions.IOStreams{In: in, Out: out, ErrOut: err}
 
 	groups := templates.CommandGroups{
+		{
+			Message: "Basic Commands:",
+			Commands: []*cobra.Command{
+				kset.NewCmdSet(f, ioStreams),
+			},
+		},
 		{
 			Message: "CloneSet Commands:",
 			Commands: []*cobra.Command{
