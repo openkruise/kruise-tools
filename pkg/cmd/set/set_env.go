@@ -36,7 +36,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	envutil "k8s.io/kubectl/pkg/cmd/set/env"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
-	"k8s.io/kubectl/pkg/polymorphichelpers"
+	// "k8s.io/kubectl/pkg/polymorphichelpers"
+	polymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/templates"
 )
@@ -44,7 +45,7 @@ import (
 var (
 	validEnvNameRegexp = regexp.MustCompile("[^a-zA-Z0-9_]")
 	envResources       = `
-  	pod (po), replicationcontroller (rc), deployment (deploy), daemonset (ds), job, replicaset (rs)`
+  	pod (po), replicationcontroller (rc), deployment (deploy), daemonset (ds), job, replicaset (rs), cloneset`
 
 	envLong = templates.LongDesc(`
 		Update environment variables on a pod template.
@@ -64,15 +65,18 @@ var (
 	envExample = templates.Examples(`
           # Update deployment 'registry' with a new environment variable
 	  kubectl set env deployment/registry STORAGE_DIR=/local
+	  kubectl-kruise set env cloneset/registry STORAGE_DIR=/local
 
 	  # List the environment variables defined on a deployments 'sample-build'
 	  kubectl set env deployment/sample-build --list
+	  kubectl-kruise set env cloneset/sample-build --list
 
 	  # List the environment variables defined on all pods
 	  kubectl set env pods --all --list
 
 	  # Output modified deployment in YAML, and does not alter the object on the server
 	  kubectl set env deployment/sample-build STORAGE_DIR=/data -o yaml
+	  kubectl-kruise set env cloneset/sample-build STORAGE_DIR=/data -o yaml
 
 	  # Update all containers in all replication controllers in the project to have ENV=prod
 	  kubectl set env rc --all ENV=prod
@@ -363,19 +367,24 @@ func (o *EnvOptions) RunEnv() error {
 	if err != nil {
 		return err
 	}
+
 	patches := CalculatePatches(infos, scheme.DefaultJSONEncoder(), func(obj runtime.Object) ([]byte, error) {
 		_, err := o.updatePodSpecForObject(obj, func(spec *v1.PodSpec) error {
 			resolutionErrorsEncountered := false
 			containers, _ := selectContainers(spec.Containers, o.ContainerSelector)
+
 			objName, err := meta.NewAccessor().Name(obj)
 			if err != nil {
 				return err
 			}
 
+
 			gvks, _, err := scheme.Scheme.ObjectKinds(obj)
 			if err != nil {
 				return err
 			}
+
+
 			objKind := obj.GetObjectKind().GroupVersionKind().Kind
 			if len(objKind) == 0 {
 				for _, gvk := range gvks {
@@ -412,6 +421,8 @@ func (o *EnvOptions) RunEnv() error {
 				}
 				return nil
 			}
+
+
 			for _, c := range containers {
 				if !o.Overwrite {
 					if err := validateNoOverwrites(c.Env, env); err != nil {
@@ -467,12 +478,14 @@ func (o *EnvOptions) RunEnv() error {
 			if resolutionErrorsEncountered {
 				return errors.New("failed to retrieve valueFrom references")
 			}
+
 			return nil
 		})
 
 		if err == nil {
 			return runtime.Encode(scheme.DefaultJSONEncoder(), obj)
 		}
+		fmt.Fprintf(o.Out, "%s\n", err)
 		return nil, err
 	})
 
@@ -481,6 +494,8 @@ func (o *EnvOptions) RunEnv() error {
 	}
 
 	allErrs := []error{}
+
+	// allErrs = append(allErrs, fmt.Errorf("%d %d\n", len(o.Prefix), o.Local))
 
 	for _, patch := range patches {
 		info := patch.Info
@@ -512,7 +527,7 @@ func (o *EnvOptions) RunEnv() error {
 		actual, err := resource.
 			NewHelper(info.Client, info.Mapping).
 			DryRun(o.dryRunStrategy == cmdutil.DryRunServer).
-			Patch(info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
+			Patch(info.Namespace, info.Name, types.MergePatchType, patch.Patch, nil)
 		if err != nil {
 			allErrs = append(allErrs, fmt.Errorf("failed to patch env update to pod template: %v", err))
 			continue
