@@ -31,7 +31,8 @@ import (
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
-	"k8s.io/kubectl/pkg/polymorphichelpers"
+	// "k8s.io/kubectl/pkg/polymorphichelpers"
+	polymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -39,7 +40,7 @@ import (
 
 var (
 	serviceaccountResources = `
-	replicationcontroller (rc), deployment (deploy), daemonset (ds), job, replicaset (rs), statefulset`
+	replicationcontroller (rc), deployment (deploy), daemonset (ds), job, replicaset (rs), statefulset, cloneset`
 
 	serviceaccountLong = templates.LongDesc(i18n.T(`
 	Update ServiceAccount of pod template resources.
@@ -50,6 +51,7 @@ var (
 	serviceaccountExample = templates.Examples(i18n.T(`
 	# Set Deployment nginx-deployment's ServiceAccount to serviceaccount1
 	kubectl set serviceaccount deployment nginx-deployment serviceaccount1
+	kubectl-kruise set serviceaccount cloneset sample serviceaccount1
 
 	# Print the result (in yaml format) of updated nginx deployment with serviceaccount from local file, without hitting apiserver
 	kubectl set sa -f nginx-deployment.yaml serviceaccount1 --local --dry-run=client -o yaml
@@ -224,7 +226,7 @@ func (o *SetServiceAccountOptions) Run() error {
 		actual, err := resource.
 			NewHelper(info.Client, info.Mapping).
 			DryRun(o.dryRunStrategy == cmdutil.DryRunServer).
-			Patch(info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
+			Patch(info.Namespace, info.Name, types.MergePatchType, patch.Patch, nil)
 		if err != nil {
 			patchErrs = append(patchErrs, fmt.Errorf("failed to patch ServiceAccountName %v", err))
 			continue

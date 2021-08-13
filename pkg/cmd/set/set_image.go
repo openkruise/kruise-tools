@@ -18,25 +18,27 @@ package set
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/spf13/cobra"
-	"k8s.io/klog/v2"
+	"k8s.io/klog"
 
+	kresource "github.com/openkruise/kruise-tools/pkg/resource"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	// "k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
-	"k8s.io/kubectl/pkg/polymorphichelpers"
+	// "k8s.io/kubectl/pkg/polymorphichelpers"
+	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 )
 
-// ImageOptions is the start of the data required to perform the operation.  As new fields are added, add them here instead of
+// SetImageOptions ImageOptions is the start of the data required to perform the operation.  As new fields are added, add them here instead of
 // referencing the cmd.Flags()
 type SetImageOptions struct {
 	resource.FilenameOptions
@@ -52,7 +54,6 @@ type SetImageOptions struct {
 	Output         string
 	Local          bool
 	ResolveImage   ImageResolver
-	fieldManager   string
 
 	PrintObj printers.ResourcePrinterFunc
 	Recorder genericclioptions.Recorder
@@ -65,28 +66,29 @@ type SetImageOptions struct {
 }
 
 var (
-	imageResources = i18n.T(`
-  	pod (po), replicationcontroller (rc), deployment (deploy), daemonset (ds), statefulset (sts), cronjob (cj), replicaset (rs), cloneset`)
+	imageResources = `
+  	pod (po), replicationcontroller (rc), deployment (deploy), daemonset (ds), replicaset (rs), cloneset`
 
-	imageLong = templates.LongDesc(i18n.T(`
+	imageLong = templates.LongDesc(`
 		Update existing container image(s) of resources.
 
 		Possible resources include (case insensitive):
-		`) + imageResources)
+		` + imageResources)
 
 	imageExample = templates.Examples(`
-		# Set a deployment's nginx container image to 'nginx:1.9.1', and its busybox container image to 'busybox'
-		kubectl-kruise set image deployment/nginx busybox=busybox nginx=nginx:1.9.1
+		# Set a deployment's nginx container image to 'nginx:1.9.1', and its busybox container image to 'busybox'.
+		kubectl set image deployment/nginx busybox=busybox nginx=nginx:1.9.1
 		kubectl-kruise set image cloneset/sample busybox=busybox nginx=nginx:1.9.1
 
 		# Update all deployments' and rc's nginx container's image to 'nginx:1.9.1'
-		kubectl-kruise set image deployments,rc nginx=nginx:1.9.1 --all
+		kubectl set image deployments,rc nginx=nginx:1.9.1 --all
+		kubectl-kruise set image cloneset,rc nginx=nginx:1.9.1 --all
 
 		# Update image of all containers of daemonset abc to 'nginx:1.9.1'
-		kubectl-kruise set image daemonset abc *=nginx:1.9.1
+		kubectl set image daemonset abc *=nginx:1.9.1
 
 		# Print result (in yaml format) of updating nginx container image from local file, without hitting the server
-		kubectl-kruise set image -f path/to/file.yaml nginx=nginx:1.9.1 --local -o yaml`)
+		kubectl set image -f path/to/file.yaml nginx=nginx:1.9.1 --local -o yaml`)
 )
 
 // NewImageOptions returns an initialized SetImageOptions instance
@@ -108,7 +110,7 @@ func NewCmdImage(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.
 	cmd := &cobra.Command{
 		Use:                   "image (-f FILENAME | TYPE NAME) CONTAINER_NAME_1=CONTAINER_IMAGE_1 ... CONTAINER_NAME_N=CONTAINER_IMAGE_N",
 		DisableFlagsInUseLine: true,
-		Short:                 i18n.T("Update the image of a pod template"),
+		Short:                 i18n.T("Update image of a pod template"),
 		Long:                  imageLong,
 		Example:               imageExample,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -127,7 +129,6 @@ func NewCmdImage(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.
 	cmd.Flags().StringVarP(&o.Selector, "selector", "l", o.Selector, "Selector (label query) to filter on, not including uninitialized ones, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)")
 	cmd.Flags().BoolVar(&o.Local, "local", o.Local, "If true, set image will NOT contact api-server but run locally.")
 	cmdutil.AddDryRunFlag(cmd)
-	// cmdutil.AddFieldManagerFlagVar(cmd, &o.fieldManager, "kubectl-set")
 	return cmd
 }
 
@@ -146,11 +147,15 @@ func (o *SetImageOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args [
 	if err != nil {
 		return err
 	}
-	// dynamicClient, err := f.DynamicClient()
+	dynamicClient, err := f.DynamicClient()
 	if err != nil {
 		return err
 	}
-	// o.DryRunVerifier = resource.NewDryRunVerifier(dynamicClient, f.OpenAPIGetter())
+	discoveryClient, err := f.ToDiscoveryClient()
+	if err != nil {
+		return err
+	}
+	o.DryRunVerifier = resource.NewDryRunVerifier(dynamicClient, discoveryClient)
 	o.Output = cmdutil.GetFlagString(cmd, "output")
 	o.ResolveImage = resolveImageFunc
 
@@ -281,13 +286,12 @@ func (o *SetImageOptions) Run() error {
 				return err
 			}
 		}
+
 		// patch the change
-		/*
-		actual, err := resource.
+		actual, err := kresource.
 			NewHelper(info.Client, info.Mapping).
 			DryRun(o.DryRunStrategy == cmdutil.DryRunServer).
-			WithFieldManager(o.fieldManager).
-			Patch(info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
+			Patch(info.Namespace, info.Name, types.MergePatchType, patch.Patch, nil)
 		if err != nil {
 			allErrs = append(allErrs, fmt.Errorf("failed to patch image update to pod template: %v", err))
 			continue
@@ -295,7 +299,9 @@ func (o *SetImageOptions) Run() error {
 
 		if err := o.PrintObj(actual, o.Out); err != nil {
 			allErrs = append(allErrs, err)
-		}*/
+		}
+
+
 	}
 	return utilerrors.NewAggregate(allErrs)
 }

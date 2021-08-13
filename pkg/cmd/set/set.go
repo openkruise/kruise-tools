@@ -25,10 +25,10 @@ import (
 )
 
 var (
-	setLong = templates.LongDesc(i18n.T(`
-		Configure application resources.
+	setLong = templates.LongDesc(`
+		Configure application resources
 
-		These commands help you make changes to existing application resources.`))
+		These commands help you make changes to existing application resources.`)
 )
 
 // NewCmdSet returns an initialized Command instance for 'set' sub command
@@ -43,11 +43,11 @@ func NewCmdSet(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Co
 
 	// add subcommands
 	cmd.AddCommand(NewCmdImage(f, streams))
-	// cmd.AddCommand(NewCmdResources(f, streams))
-	// cmd.AddCommand(NewCmdSelector(f, streams))
-	// cmd.AddCommand(NewCmdSubject(f, streams))
-	// cmd.AddCommand(NewCmdServiceAccount(f, streams))
-	// cmd.AddCommand(NewCmdEnv(f, streams))
+	cmd.AddCommand(NewCmdResources(f, streams))
+	cmd.AddCommand(NewCmdSelector(f, streams))
+	cmd.AddCommand(NewCmdSubject(f, streams))
+	cmd.AddCommand(NewCmdServiceAccount(f, streams))
+	cmd.AddCommand(NewCmdEnv(f, streams))
 
 	return cmd
 }

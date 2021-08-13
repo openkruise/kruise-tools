@@ -281,7 +281,7 @@ func (o *SubjectOptions) Run(fn updateSubjects) error {
 		actual, err := resource.
 			NewHelper(info.Client, info.Mapping).
 			DryRun(o.DryRunStrategy == cmdutil.DryRunServer).
-			Patch(info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
+			Patch(info.Namespace, info.Name, types.MergePatchType, patch.Patch, nil)
 		if err != nil {
 			allErrs = append(allErrs, fmt.Errorf("failed to patch subjects to rolebinding: %v", err))
 			continue

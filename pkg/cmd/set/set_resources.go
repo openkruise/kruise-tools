@@ -31,7 +31,8 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	generateversioned "k8s.io/kubectl/pkg/generate/versioned"
-	"k8s.io/kubectl/pkg/polymorphichelpers"
+	// "k8s.io/kubectl/pkg/polymorphichelpers"
+	polymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -48,12 +49,15 @@ var (
 	resourcesExample = templates.Examples(`
 		# Set a deployments nginx container cpu limits to "200m" and memory to "512Mi"
 		kubectl set resources deployment nginx -c=nginx --limits=cpu=200m,memory=512Mi
+		kubectl-kruise set resources cloneset sample -c=nginx --limits=cpu=200m,memory=512Mi
 
 		# Set the resource request and limits for all containers in nginx
 		kubectl set resources deployment nginx --limits=cpu=200m,memory=512Mi --requests=cpu=100m,memory=256Mi
+		kubectl-kruise set resources cloneset sample --limits=cpu=200m,memory=512Mi --requests=cpu=100m,memory=256Mi
 
 		# Remove the resource requests for resources on containers in nginx
 		kubectl set resources deployment nginx --limits=cpu=0,memory=0 --requests=cpu=0,memory=0
+		kubectl-kruise set resources cloneset sample --limits=cpu=0,memory=0 --requests=cpu=0,memory=0
 
 		# Print the result (in yaml format) of updating nginx container limits from a local, without hitting the server
 		kubectl set resources -f path/to/file.yaml --limits=cpu=200m,memory=512Mi --local -o yaml`)
@@ -301,7 +305,7 @@ func (o *SetResourcesOptions) Run() error {
 		actual, err := resource.
 			NewHelper(info.Client, info.Mapping).
 			DryRun(o.DryRunStrategy == cmdutil.DryRunServer).
-			Patch(info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
+			Patch(info.Namespace, info.Name, types.MergePatchType, patch.Patch, nil)
 		if err != nil {
 			allErrs = append(allErrs, fmt.Errorf("failed to patch resources update to pod template %v", err))
 			continue
