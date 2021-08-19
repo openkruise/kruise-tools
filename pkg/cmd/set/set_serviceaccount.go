@@ -50,11 +50,11 @@ var (
 
 	serviceaccountExample = templates.Examples(i18n.T(`
 	# Set Deployment nginx-deployment's ServiceAccount to serviceaccount1
-	kubectl set serviceaccount deployment nginx-deployment serviceaccount1
+	kubectl-kruise set serviceaccount deployment nginx-deployment serviceaccount1
 	kubectl-kruise set serviceaccount cloneset sample serviceaccount1
 
 	# Print the result (in yaml format) of updated nginx deployment with serviceaccount from local file, without hitting apiserver
-	kubectl set sa -f nginx-deployment.yaml serviceaccount1 --local --dry-run=client -o yaml
+	kubectl-kruise set sa -f nginx-deployment.yaml serviceaccount1 --local --dry-run=client -o yaml
 	`))
 )
 

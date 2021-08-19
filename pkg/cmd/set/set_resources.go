@@ -17,7 +17,16 @@ limitations under the License.
 package set
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	appsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
+	"github.com/openkruise/kruise-tools/pkg/api"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
@@ -31,8 +40,8 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	generateversioned "k8s.io/kubectl/pkg/generate/versioned"
-	// "k8s.io/kubectl/pkg/polymorphichelpers"
-	polymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
+	"k8s.io/kubectl/pkg/polymorphichelpers"
+	// polymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -48,19 +57,19 @@ var (
 
 	resourcesExample = templates.Examples(`
 		# Set a deployments nginx container cpu limits to "200m" and memory to "512Mi"
-		kubectl set resources deployment nginx -c=nginx --limits=cpu=200m,memory=512Mi
+		kubectl-kruise set resources deployment nginx-deployment -c=nginx --limits=cpu=200m,memory=512Mi
 		kubectl-kruise set resources cloneset sample -c=nginx --limits=cpu=200m,memory=512Mi
 
 		# Set the resource request and limits for all containers in nginx
-		kubectl set resources deployment nginx --limits=cpu=200m,memory=512Mi --requests=cpu=100m,memory=256Mi
+		kubectl-kruise set resources deployment nginx --limits=cpu=200m,memory=512Mi --requests=cpu=100m,memory=256Mi
 		kubectl-kruise set resources cloneset sample --limits=cpu=200m,memory=512Mi --requests=cpu=100m,memory=256Mi
 
 		# Remove the resource requests for resources on containers in nginx
-		kubectl set resources deployment nginx --limits=cpu=0,memory=0 --requests=cpu=0,memory=0
+		kubectl-kruise set resources deployment nginx --limits=cpu=0,memory=0 --requests=cpu=0,memory=0
 		kubectl-kruise set resources cloneset sample --limits=cpu=0,memory=0 --requests=cpu=0,memory=0
 
 		# Print the result (in yaml format) of updating nginx container limits from a local, without hitting the server
-		kubectl set resources -f path/to/file.yaml --limits=cpu=200m,memory=512Mi --local -o yaml`)
+		kubectl-kruise set resources -f path/to/file.yaml --limits=cpu=200m,memory=512Mi --local -o yaml`)
 )
 
 // SetResourcesOptions is the start of the data required to perform the operation. As new fields are added, add them here instead of
@@ -122,7 +131,7 @@ func NewCmdResources(f cmdutil.Factory, streams genericclioptions.IOStreams) *co
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(o.Complete(f, cmd, args))
 			cmdutil.CheckErr(o.Validate())
-			cmdutil.CheckErr(o.Run())
+			cmdutil.CheckErr(o.Run(f))
 		},
 	}
 
@@ -233,87 +242,199 @@ func (o *SetResourcesOptions) Validate() error {
 }
 
 // Run performs the execution of 'set resources' sub command
-func (o *SetResourcesOptions) Run() error {
-	allErrs := []error{}
-	patches := CalculatePatches(o.Infos, scheme.DefaultJSONEncoder(), func(obj runtime.Object) ([]byte, error) {
-		transformed := false
-		_, err := o.UpdatePodSpecForObject(obj, func(spec *v1.PodSpec) error {
-			containers, _ := selectContainers(spec.Containers, o.ContainerSelector)
-			if len(containers) != 0 {
-				for i := range containers {
-					if len(o.Limits) != 0 && len(containers[i].Resources.Limits) == 0 {
-						containers[i].Resources.Limits = make(v1.ResourceList)
-					}
-					for key, value := range o.ResourceRequirements.Limits {
-						containers[i].Resources.Limits[key] = value
-					}
+func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
 
-					if len(o.Requests) != 0 && len(containers[i].Resources.Requests) == 0 {
-						containers[i].Resources.Requests = make(v1.ResourceList)
-					}
-					for key, value := range o.ResourceRequirements.Requests {
-						containers[i].Resources.Requests[key] = value
-					}
-					transformed = true
-				}
-			} else {
-				allErrs = append(allErrs, fmt.Errorf("error: unable to find container named %s", o.ContainerSelector))
-			}
-			return nil
-		})
+	if len(o.Infos) == 0{
+		return nil
+	}
+	resourceType := strings.Split(o.Infos[0].ObjectName(), "/")[0]
+
+	switch resourceType {
+	case "cloneset", "clonesets":
+		var allErrs []error
+		transformed := false
+
+		cfg, err := f.ToRESTConfig()
 		if err != nil {
-			return nil, err
+			return err
+		}
+
+		schemeGet := api.GetScheme()
+		mapper, err := apiutil.NewDiscoveryRESTMapper(cfg)
+
+		if err != nil {
+			return err
+		}
+
+		ctrl := &control{}
+
+		if ctrl.client, err = client.New(cfg, client.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
+			return err
+		}
+
+		if ctrl.cache, err = cache.New(cfg, cache.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
+			return err
+		}
+
+		cs := &appsv1alpha1.CloneSet{}
+		if err := ctrl.client.Get(context.TODO(), types.NamespacedName{Namespace: o.Infos[0].Namespace, Name: o.Infos[0].Name}, cs); err != nil {
+			return fmt.Errorf("failed to get %v of %v: %v", o.Infos[0].Namespace, o.Infos[0].Name, err)
+		}
+
+		resolutionErrorsEncountered := false
+		containers, _ := selectContainers(cs.Spec.Template.Spec.Containers, o.ContainerSelector)
+
+		_, err = meta.NewAccessor().Name(cs)
+		if err != nil {
+			return err
+		}
+
+		gvks, _, err := scheme.Scheme.ObjectKinds(cs)
+		if err != nil {
+			return err
+		}
+
+		objKind := cs.GetObjectKind().GroupVersionKind().Kind
+		if len(objKind) == 0 {
+			for _, gvk := range gvks {
+				if len(gvk.Kind) == 0 {
+					continue
+				}
+				if len(gvk.Version) == 0 || gvk.Version == runtime.APIVersionInternal {
+					continue
+				}
+
+				objKind = gvk.Kind
+				break
+			}
+		}
+
+		if len(containers) != 0 {
+			for i := range containers {
+				if len(o.Limits) != 0 && len(containers[i].Resources.Limits) == 0 {
+					containers[i].Resources.Limits = make(v1.ResourceList)
+				}
+				for key, value := range o.ResourceRequirements.Limits {
+					containers[i].Resources.Limits[key] = value
+				}
+
+				if len(o.Requests) != 0 && len(containers[i].Resources.Requests) == 0 {
+					containers[i].Resources.Requests = make(v1.ResourceList)
+				}
+				for key, value := range o.ResourceRequirements.Requests {
+					containers[i].Resources.Requests[key] = value
+				}
+				transformed = true
+			}
+		} else {
+			allErrs = append(allErrs, fmt.Errorf("error: unable to find container named %s", o.ContainerSelector))
 		}
 		if !transformed {
-			return nil, nil
+			return nil
 		}
+
 		// record this change (for rollout history)
-		if err := o.Recorder.Record(obj); err != nil {
+		if err := o.Recorder.Record(cs); err != nil {
 			klog.V(4).Infof("error recording current command: %v", err)
 		}
 
-		return runtime.Encode(scheme.DefaultJSONEncoder(), obj)
-	})
-
-	for _, patch := range patches {
-		info := patch.Info
-		name := info.ObjectName()
-		if patch.Err != nil {
-			allErrs = append(allErrs, fmt.Errorf("error: %s %v\n", name, patch.Err))
-			continue
+		if err := ctrl.client.Update(context.TODO(), cs); err != nil {
+			return err
 		}
 
-		//no changes
-		if string(patch.Patch) == "{}" || len(patch.Patch) == 0 {
-			continue
+		if resolutionErrorsEncountered {
+			return errors.New("failed to retrieve valueFrom references")
 		}
 
-		if o.Local || o.DryRunStrategy == cmdutil.DryRunClient {
-			if err := o.PrintObj(info.Object, o.Out); err != nil {
-				allErrs = append(allErrs, err)
+		fmt.Fprintf(o.Out, "%s resource requirements updated\n", o.Infos[0].ObjectName())
+
+		return utilerrors.NewAggregate(allErrs)
+
+	case "deployment", "deployments":
+
+		var allErrs []error
+		patches := CalculatePatches(o.Infos, scheme.DefaultJSONEncoder(), func(obj runtime.Object) ([]byte, error) {
+			transformed := false
+			_, err := o.UpdatePodSpecForObject(obj, func(spec *v1.PodSpec) error {
+				containers, _ := selectContainers(spec.Containers, o.ContainerSelector)
+				if len(containers) != 0 {
+					for i := range containers {
+						if len(o.Limits) != 0 && len(containers[i].Resources.Limits) == 0 {
+							containers[i].Resources.Limits = make(v1.ResourceList)
+						}
+						for key, value := range o.ResourceRequirements.Limits {
+							containers[i].Resources.Limits[key] = value
+						}
+
+						if len(o.Requests) != 0 && len(containers[i].Resources.Requests) == 0 {
+							containers[i].Resources.Requests = make(v1.ResourceList)
+						}
+						for key, value := range o.ResourceRequirements.Requests {
+							containers[i].Resources.Requests[key] = value
+						}
+						transformed = true
+					}
+				} else {
+					allErrs = append(allErrs, fmt.Errorf("error: unable to find container named %s", o.ContainerSelector))
+				}
+				return nil
+			})
+			if err != nil {
+				return nil, err
 			}
-			continue
-		}
+			if !transformed {
+				return nil, nil
+			}
+			// record this change (for rollout history)
+			if err := o.Recorder.Record(obj); err != nil {
+				klog.V(4).Infof("error recording current command: %v", err)
+			}
 
-		if o.DryRunStrategy == cmdutil.DryRunServer {
-			if err := o.DryRunVerifier.HasSupport(info.Mapping.GroupVersionKind); err != nil {
+			return runtime.Encode(scheme.DefaultJSONEncoder(), obj)
+		})
+
+		for _, patch := range patches {
+			info := patch.Info
+			name := info.ObjectName()
+			if patch.Err != nil {
+				allErrs = append(allErrs, fmt.Errorf("error: %s %v\n", name, patch.Err))
+				continue
+			}
+
+			//no changes
+			if string(patch.Patch) == "{}" || len(patch.Patch) == 0 {
+				continue
+			}
+
+			if o.Local || o.DryRunStrategy == cmdutil.DryRunClient {
+				if err := o.PrintObj(info.Object, o.Out); err != nil {
+					allErrs = append(allErrs, err)
+				}
+				continue
+			}
+
+			if o.DryRunStrategy == cmdutil.DryRunServer {
+				if err := o.DryRunVerifier.HasSupport(info.Mapping.GroupVersionKind); err != nil {
+					allErrs = append(allErrs, fmt.Errorf("failed to patch resources update to pod template %v", err))
+					continue
+				}
+			}
+
+			actual, err := resource.
+				NewHelper(info.Client, info.Mapping).
+				DryRun(o.DryRunStrategy == cmdutil.DryRunServer).
+				Patch(info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
+			if err != nil {
 				allErrs = append(allErrs, fmt.Errorf("failed to patch resources update to pod template %v", err))
 				continue
 			}
-		}
 
-		actual, err := resource.
-			NewHelper(info.Client, info.Mapping).
-			DryRun(o.DryRunStrategy == cmdutil.DryRunServer).
-			Patch(info.Namespace, info.Name, types.MergePatchType, patch.Patch, nil)
-		if err != nil {
-			allErrs = append(allErrs, fmt.Errorf("failed to patch resources update to pod template %v", err))
-			continue
+			if err := o.PrintObj(actual, o.Out); err != nil {
+				allErrs = append(allErrs, err)
+			}
 		}
-
-		if err := o.PrintObj(actual, o.Out); err != nil {
-			allErrs = append(allErrs, err)
-		}
+		return utilerrors.NewAggregate(allErrs)
+	default:
+		return fmt.Errorf("unsupported resource type. available resource types include cloneset and deployment")
 	}
-	return utilerrors.NewAggregate(allErrs)
 }

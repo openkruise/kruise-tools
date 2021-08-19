@@ -17,19 +17,39 @@ limitations under the License.
 package set
 
 import (
+	"context"
 	"errors"
-	"fmt"
-	"regexp"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"sort"
+
+	// "errors"
+	"fmt"
+	appsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
+	"github.com/openkruise/kruise-tools/pkg/api"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+
+	// "k8s.io/apimachinery/pkg/runtime/schema"
+	// "k8s.io/client-go/util/workqueue"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	// "sync"
+
+	// internalcmdutil "github.com/openkruise/kruise-tools/pkg/cmd/util"
+	// "github.com/openkruise/kruise-tools/pkg/creation"
+	// clonesetcreation "github.com/openkruise/kruise-tools/pkg/creation/cloneset"
+	// apps "k8s.io/api/apps/v1"
+	"regexp"
+	// "sort"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"k8s.io/api/core/v1"
-	meta "k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime"
+	// meta "k8s.io/apimachinery/pkg/api/meta"
+	// "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	// utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
@@ -40,6 +60,7 @@ import (
 	polymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/templates"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -63,39 +84,39 @@ var (
 		` + envResources)
 
 	envExample = templates.Examples(`
-          # Update deployment 'registry' with a new environment variable
-	  kubectl set env deployment/registry STORAGE_DIR=/local
-	  kubectl-kruise set env cloneset/registry STORAGE_DIR=/local
+          # Update cloneset 'sample' with a new environment variable
+	  kubectl-kruise set env deployment/nginx-deployment STORAGE_DIR=/local
+	  kubectl-kruise set env cloneset/sample STORAGE_DIR=/local
 
 	  # List the environment variables defined on a deployments 'sample-build'
-	  kubectl set env deployment/sample-build --list
-	  kubectl-kruise set env cloneset/sample-build --list
+	  kubectl-kruise set env deployment/nginx-deployment --list
+	  kubectl-kruise set env cloneset/sample --list
 
 	  # List the environment variables defined on all pods
-	  kubectl set env pods --all --list
+	  kubectl-kruise set env pods --all --list
 
 	  # Output modified deployment in YAML, and does not alter the object on the server
-	  kubectl set env deployment/sample-build STORAGE_DIR=/data -o yaml
+	  kubectl-kruise set env deployment/sample-build STORAGE_DIR=/data -o yaml
 	  kubectl-kruise set env cloneset/sample-build STORAGE_DIR=/data -o yaml
 
 	  # Update all containers in all replication controllers in the project to have ENV=prod
-	  kubectl set env rc --all ENV=prod
+	  kubectl-kruise set env rc --all ENV=prod
 
 	  # Import environment from a secret
-	  kubectl set env --from=secret/mysecret deployment/myapp
+	  kubectl-kruise set env --from=secret/mysecret deployment/myapp
 
 	  # Import environment from a config map with a prefix
-	  kubectl set env --from=configmap/myconfigmap --prefix=MYSQL_ deployment/myapp
+	  kubectl-kruise set env --from=configmap/myconfigmap --prefix=MYSQL_ deployment/myapp
 
           # Import specific keys from a config map
-          kubectl set env --keys=my-example-key --from=configmap/myconfigmap deployment/myapp
+          kubectl-kruise set env --keys=my-example-key --from=configmap/myconfigmap deployment/myapp
 
 	  # Remove the environment variable ENV from container 'c1' in all deployment configs
-	  kubectl set env deployments --all --containers="c1" ENV-
+	  kubectl-kruise set env deployments --all --containers="c1" ENV-
 
 	  # Remove the environment variable ENV from a deployment definition on disk and
 	  # update the deployment config on the server
-	  kubectl set env -f deploy.json ENV-
+	  kubectl-kruise set env -f deploy.json ENV-
 
 	  # Set some of the local shell environment into a deployment config on the server
 	  env | grep RAILS_ | kubectl set env -e - deployment/registry`)
@@ -130,8 +151,15 @@ type EnvOptions struct {
 	namespace              string
 	enforceNamespace       bool
 	clientset              *kubernetes.Clientset
+	resRef				   api.ResourceRef
 
 	genericclioptions.IOStreams
+
+}
+
+type control struct {
+	client   client.Client
+	cache    cache.Cache
 }
 
 // NewEnvOptions returns an EnvOptions indicating all containers in the selected
@@ -159,7 +187,7 @@ func NewCmdEnv(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Co
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(o.Complete(f, cmd, args))
 			cmdutil.CheckErr(o.Validate())
-			cmdutil.CheckErr(o.RunEnv())
+			cmdutil.CheckErr(o.RunEnv(f))
 		},
 	}
 	usage := "the resource to update the env"
@@ -274,8 +302,9 @@ func (o *EnvOptions) Validate() error {
 }
 
 // RunEnv contains all the necessary functionality for the OpenShift cli env command
-func (o *EnvOptions) RunEnv() error {
+func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 	env, remove, err := envutil.ParseEnv(append(o.EnvParams, o.envArgs...), o.In)
+
 	if err != nil {
 		return err
 	}
@@ -368,180 +397,326 @@ func (o *EnvOptions) RunEnv() error {
 		return err
 	}
 
-	patches := CalculatePatches(infos, scheme.DefaultJSONEncoder(), func(obj runtime.Object) ([]byte, error) {
-		_, err := o.updatePodSpecForObject(obj, func(spec *v1.PodSpec) error {
-			resolutionErrorsEncountered := false
-			containers, _ := selectContainers(spec.Containers, o.ContainerSelector)
-
-			objName, err := meta.NewAccessor().Name(obj)
-			if err != nil {
-				return err
-			}
-
-
-			gvks, _, err := scheme.Scheme.ObjectKinds(obj)
-			if err != nil {
-				return err
-			}
-
-
-			objKind := obj.GetObjectKind().GroupVersionKind().Kind
-			if len(objKind) == 0 {
-				for _, gvk := range gvks {
-					if len(gvk.Kind) == 0 {
-						continue
-					}
-					if len(gvk.Version) == 0 || gvk.Version == runtime.APIVersionInternal {
-						continue
-					}
-
-					objKind = gvk.Kind
-					break
-				}
-			}
-
-			if len(containers) == 0 {
-				if gvks, _, err := scheme.Scheme.ObjectKinds(obj); err == nil {
-					objKind := obj.GetObjectKind().GroupVersionKind().Kind
-					if len(objKind) == 0 {
-						for _, gvk := range gvks {
-							if len(gvk.Kind) == 0 {
-								continue
-							}
-							if len(gvk.Version) == 0 || gvk.Version == runtime.APIVersionInternal {
-								continue
-							}
-
-							objKind = gvk.Kind
-							break
-						}
-					}
-
-					fmt.Fprintf(o.ErrOut, "warning: %s/%s does not have any containers matching %q\n", objKind, objName, o.ContainerSelector)
-				}
-				return nil
-			}
-
-
-			for _, c := range containers {
-				if !o.Overwrite {
-					if err := validateNoOverwrites(c.Env, env); err != nil {
-						return err
-					}
-				}
-
-				c.Env = updateEnv(c.Env, env, remove)
-				if o.List {
-					resolveErrors := map[string][]string{}
-					store := envutil.NewResourceStore()
-
-					fmt.Fprintf(o.Out, "# %s %s, container %s\n", objKind, objName, c.Name)
-					for _, env := range c.Env {
-						// Print the simple value
-						if env.ValueFrom == nil {
-							fmt.Fprintf(o.Out, "%s=%s\n", env.Name, env.Value)
-							continue
-						}
-
-						// Print the reference version
-						if !o.Resolve {
-							fmt.Fprintf(o.Out, "# %s from %s\n", env.Name, envutil.GetEnvVarRefString(env.ValueFrom))
-							continue
-						}
-
-						value, err := envutil.GetEnvVarRefValue(o.clientset, o.namespace, store, env.ValueFrom, obj, c)
-						// Print the resolved value
-						if err == nil {
-							fmt.Fprintf(o.Out, "%s=%s\n", env.Name, value)
-							continue
-						}
-
-						// Print the reference version and save the resolve error
-						fmt.Fprintf(o.Out, "# %s from %s\n", env.Name, envutil.GetEnvVarRefString(env.ValueFrom))
-						errString := err.Error()
-						resolveErrors[errString] = append(resolveErrors[errString], env.Name)
-						resolutionErrorsEncountered = true
-					}
-
-					// Print any resolution errors
-					errs := []string{}
-					for err, vars := range resolveErrors {
-						sort.Strings(vars)
-						errs = append(errs, fmt.Sprintf("error retrieving reference for %s: %v", strings.Join(vars, ", "), err))
-					}
-					sort.Strings(errs)
-					for _, err := range errs {
-						fmt.Fprintln(o.ErrOut, err)
-					}
-				}
-			}
-			if resolutionErrorsEncountered {
-				return errors.New("failed to retrieve valueFrom references")
-			}
-
-			return nil
-		})
-
-		if err == nil {
-			return runtime.Encode(scheme.DefaultJSONEncoder(), obj)
-		}
-		fmt.Fprintf(o.Out, "%s\n", err)
-		return nil, err
-	})
-
-	if o.List {
+	if len(infos) == 0{
 		return nil
 	}
+	resourceType := strings.Split(infos[0].ObjectName(), "/")[0]
 
-	allErrs := []error{}
-
-	// allErrs = append(allErrs, fmt.Errorf("%d %d\n", len(o.Prefix), o.Local))
-
-	for _, patch := range patches {
-		info := patch.Info
-		if patch.Err != nil {
-			name := info.ObjectName()
-			allErrs = append(allErrs, fmt.Errorf("error: %s %v\n", name, patch.Err))
-			continue
+	switch resourceType {
+	case "cloneset", "clonesets":
+		cfg, err := f.ToRESTConfig()
+		if err != nil {
+			return err
 		}
 
-		// no changes
-		if string(patch.Patch) == "{}" || len(patch.Patch) == 0 {
-			continue
+		schemeGet := api.GetScheme()
+		mapper, err := apiutil.NewDiscoveryRESTMapper(cfg)
+
+		if err != nil {
+			return err
 		}
 
-		if o.Local || o.dryRunStrategy == cmdutil.DryRunClient {
-			if err := o.PrintObj(info.Object, o.Out); err != nil {
-				allErrs = append(allErrs, err)
+		ctrl := &control{}
+
+		if ctrl.client, err = client.New(cfg, client.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
+			return err
+		}
+
+		if ctrl.cache, err = cache.New(cfg, cache.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
+			return err
+		}
+
+		cs := &appsv1alpha1.CloneSet{}
+		if err := ctrl.client.Get(context.TODO(), types.NamespacedName{Namespace: o.namespace, Name: infos[0].Name}, cs); err != nil {
+			return fmt.Errorf("failed to get %v of %v: %v", o.namespace, infos[0].Name, err)
+		}
+
+		resolutionErrorsEncountered := false
+		containers, _ := selectContainers(cs.Spec.Template.Spec.Containers, o.ContainerSelector)
+
+		objName, err := meta.NewAccessor().Name(cs)
+		if err != nil {
+			return err
+		}
+
+		gvks, _, err := scheme.Scheme.ObjectKinds(cs)
+		if err != nil {
+			return err
+		}
+
+		objKind := cs.GetObjectKind().GroupVersionKind().Kind
+		if len(objKind) == 0 {
+			for _, gvk := range gvks {
+				if len(gvk.Kind) == 0 {
+					continue
+				}
+				if len(gvk.Version) == 0 || gvk.Version == runtime.APIVersionInternal {
+					continue
+				}
+
+				objKind = gvk.Kind
+				break
 			}
-			continue
 		}
 
-		if o.dryRunStrategy == cmdutil.DryRunServer {
-			if err := o.dryRunVerifier.HasSupport(info.Mapping.GroupVersionKind); err != nil {
-				allErrs = append(allErrs, err)
+		if len(containers) == 0 {
+			if gvks, _, err := scheme.Scheme.ObjectKinds(cs); err == nil {
+				objKind := cs.GetObjectKind().GroupVersionKind().Kind
+				if len(objKind) == 0 {
+					for _, gvk := range gvks {
+						if len(gvk.Kind) == 0 {
+							continue
+						}
+						if len(gvk.Version) == 0 || gvk.Version == runtime.APIVersionInternal {
+							continue
+						}
+
+						objKind = gvk.Kind
+						break
+					}
+				}
+
+				fmt.Fprintf(o.ErrOut, "warning: %s/%s does not have any containers matching %q\n", objKind, objName, o.ContainerSelector)
+			}
+			return nil
+		}
+
+		for _, c := range containers {
+			if !o.Overwrite {
+				if err := validateNoOverwrites(c.Env, env); err != nil {
+					return err
+				}
+			}
+
+			c.Env = updateEnv(c.Env, env, remove)
+			if o.List {
+				resolveErrors := map[string][]string{}
+				store := envutil.NewResourceStore()
+
+				fmt.Fprintf(o.Out, "# %s %s, container %s\n", objKind, objName, c.Name)
+				for _, env := range c.Env {
+					// Print the simple value
+					if env.ValueFrom == nil {
+						fmt.Fprintf(o.Out, "%s=%s\n", env.Name, env.Value)
+						continue
+					}
+
+					// Print the reference version
+					if !o.Resolve {
+						fmt.Fprintf(o.Out, "# %s from %s\n", env.Name, envutil.GetEnvVarRefString(env.ValueFrom))
+						continue
+					}
+
+					value, err := envutil.GetEnvVarRefValue(o.clientset, o.namespace, store, env.ValueFrom, cs, c)
+					// Print the resolved value
+					if err == nil {
+						fmt.Fprintf(o.Out, "%s=%s\n", env.Name, value)
+						continue
+					}
+
+					// Print the reference version and save the resolve error
+					fmt.Fprintf(o.Out, "# %s from %s\n", env.Name, envutil.GetEnvVarRefString(env.ValueFrom))
+					errString := err.Error()
+					resolveErrors[errString] = append(resolveErrors[errString], env.Name)
+					resolutionErrorsEncountered = true
+				}
+
+				// Print any resolution errors
+				errs := []string{}
+				for err, vars := range resolveErrors {
+					sort.Strings(vars)
+					errs = append(errs, fmt.Sprintf("error retrieving reference for %s: %v", strings.Join(vars, ", "), err))
+				}
+				sort.Strings(errs)
+				for _, err := range errs {
+					fmt.Fprintln(o.ErrOut, err)
+				}
+			}
+		}
+
+		if err := ctrl.client.Update(context.TODO(), cs); err != nil {
+			return err
+		}
+
+		if resolutionErrorsEncountered {
+			return errors.New("failed to retrieve valueFrom references")
+		}
+
+		if o.List {
+			return nil
+		}
+
+		fmt.Fprintf(o.Out, "%s env updated\n", infos[0].ObjectName())
+
+		return nil
+	case "deployment", "deployments", "rc":
+		patches := CalculatePatches(infos, scheme.DefaultJSONEncoder(), func(obj runtime.Object) ([]byte, error) {
+			_, err := o.updatePodSpecForObject(obj, func(spec *v1.PodSpec) error {
+				resolutionErrorsEncountered := false
+				containers, _ := selectContainers(spec.Containers, o.ContainerSelector)
+				objName, err := meta.NewAccessor().Name(obj)
+				if err != nil {
+					return err
+				}
+
+				gvks, _, err := scheme.Scheme.ObjectKinds(obj)
+				if err != nil {
+					return err
+				}
+				objKind := obj.GetObjectKind().GroupVersionKind().Kind
+				if len(objKind) == 0 {
+					for _, gvk := range gvks {
+						if len(gvk.Kind) == 0 {
+							continue
+						}
+						if len(gvk.Version) == 0 || gvk.Version == runtime.APIVersionInternal {
+							continue
+						}
+
+						objKind = gvk.Kind
+						break
+					}
+				}
+
+				if len(containers) == 0 {
+					if gvks, _, err := scheme.Scheme.ObjectKinds(obj); err == nil {
+						objKind := obj.GetObjectKind().GroupVersionKind().Kind
+						if len(objKind) == 0 {
+							for _, gvk := range gvks {
+								if len(gvk.Kind) == 0 {
+									continue
+								}
+								if len(gvk.Version) == 0 || gvk.Version == runtime.APIVersionInternal {
+									continue
+								}
+
+								objKind = gvk.Kind
+								break
+							}
+						}
+
+						fmt.Fprintf(o.ErrOut, "warning: %s/%s does not have any containers matching %q\n", objKind, objName, o.ContainerSelector)
+					}
+					return nil
+				}
+				for _, c := range containers {
+					if !o.Overwrite {
+						if err := validateNoOverwrites(c.Env, env); err != nil {
+							return err
+						}
+					}
+
+					c.Env = updateEnv(c.Env, env, remove)
+					if o.List {
+						resolveErrors := map[string][]string{}
+						store := envutil.NewResourceStore()
+
+						fmt.Fprintf(o.Out, "# %s %s, container %s\n", objKind, objName, c.Name)
+						for _, env := range c.Env {
+							// Print the simple value
+							if env.ValueFrom == nil {
+								fmt.Fprintf(o.Out, "%s=%s\n", env.Name, env.Value)
+								continue
+							}
+
+							// Print the reference version
+							if !o.Resolve {
+								fmt.Fprintf(o.Out, "# %s from %s\n", env.Name, envutil.GetEnvVarRefString(env.ValueFrom))
+								continue
+							}
+
+							value, err := envutil.GetEnvVarRefValue(o.clientset, o.namespace, store, env.ValueFrom, obj, c)
+							// Print the resolved value
+							if err == nil {
+								fmt.Fprintf(o.Out, "%s=%s\n", env.Name, value)
+								continue
+							}
+
+							// Print the reference version and save the resolve error
+							fmt.Fprintf(o.Out, "# %s from %s\n", env.Name, envutil.GetEnvVarRefString(env.ValueFrom))
+							errString := err.Error()
+							resolveErrors[errString] = append(resolveErrors[errString], env.Name)
+							resolutionErrorsEncountered = true
+						}
+
+						// Print any resolution errors
+						errs := []string{}
+						for err, vars := range resolveErrors {
+							sort.Strings(vars)
+							errs = append(errs, fmt.Sprintf("error retrieving reference for %s: %v", strings.Join(vars, ", "), err))
+						}
+						sort.Strings(errs)
+						for _, err := range errs {
+							fmt.Fprintln(o.ErrOut, err)
+						}
+					}
+				}
+				if resolutionErrorsEncountered {
+					return errors.New("failed to retrieve valueFrom references")
+				}
+				return nil
+			})
+
+			if err == nil {
+				return runtime.Encode(scheme.DefaultJSONEncoder(), obj)
+			}
+			return nil, err
+		})
+
+		if o.List {
+			return nil
+		}
+
+		allErrs := []error{}
+
+		for _, patch := range patches {
+			info := patch.Info
+			if patch.Err != nil {
+				name := info.ObjectName()
+				allErrs = append(allErrs, fmt.Errorf("error: %s %v\n", name, patch.Err))
 				continue
 			}
-		}
 
-		actual, err := resource.
-			NewHelper(info.Client, info.Mapping).
-			DryRun(o.dryRunStrategy == cmdutil.DryRunServer).
-			Patch(info.Namespace, info.Name, types.MergePatchType, patch.Patch, nil)
-		if err != nil {
-			allErrs = append(allErrs, fmt.Errorf("failed to patch env update to pod template: %v", err))
-			continue
-		}
+			// no changes
+			if string(patch.Patch) == "{}" || len(patch.Patch) == 0 {
+				continue
+			}
 
-		// make sure arguments to set or replace environment variables are set
-		// before returning a successful message
-		if len(env) == 0 && len(o.envArgs) == 0 {
-			return fmt.Errorf("at least one environment variable must be provided")
-		}
+			if o.Local || o.dryRunStrategy == cmdutil.DryRunClient {
+				if err := o.PrintObj(info.Object, o.Out); err != nil {
+					allErrs = append(allErrs, err)
+				}
+				continue
+			}
 
-		if err := o.PrintObj(actual, o.Out); err != nil {
-			allErrs = append(allErrs, err)
+			if o.dryRunStrategy == cmdutil.DryRunServer {
+				if err := o.dryRunVerifier.HasSupport(info.Mapping.GroupVersionKind); err != nil {
+					allErrs = append(allErrs, err)
+					continue
+				}
+			}
+
+			actual, err := resource.
+				NewHelper(info.Client, info.Mapping).
+				DryRun(o.dryRunStrategy == cmdutil.DryRunServer).
+				Patch(info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
+			if err != nil {
+				allErrs = append(allErrs, fmt.Errorf("failed to patch env update to pod template: %v", err))
+				continue
+			}
+
+			// make sure arguments to set or replace environment variables are set
+			// before returning a successful message
+			if len(env) == 0 && len(o.envArgs) == 0 {
+				return fmt.Errorf("at least one environment variable must be provided")
+			}
+
+			if err := o.PrintObj(actual, o.Out); err != nil {
+				allErrs = append(allErrs, err)
+			}
 		}
+		return utilerrors.NewAggregate(allErrs)
+	default:
+		return fmt.Errorf("unsupported resource type. available resource types include cloneset and deployment")
 	}
-	return utilerrors.NewAggregate(allErrs)
 }
