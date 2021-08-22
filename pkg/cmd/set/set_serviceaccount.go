@@ -20,19 +20,18 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/klog"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/klog"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
-	// "k8s.io/kubectl/pkg/polymorphichelpers"
-	polymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -40,7 +39,7 @@ import (
 
 var (
 	serviceaccountResources = `
-	replicationcontroller (rc), deployment (deploy), daemonset (ds), job, replicaset (rs), statefulset, cloneset`
+	replicationcontroller (rc), deployment (deploy), daemonset (ds), job, replicaset (rs), statefulset, cloneset (cs)`
 
 	serviceaccountLong = templates.LongDesc(i18n.T(`
 	Update ServiceAccount of pod template resources.

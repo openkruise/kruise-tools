@@ -20,19 +20,18 @@ import (
 	"fmt"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/spf13/cobra"
-	"k8s.io/klog"
-
+	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	kresource "github.com/openkruise/kruise-tools/pkg/resource"
+	"github.com/spf13/cobra"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/klog"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
-	// "k8s.io/kubectl/pkg/polymorphichelpers"
-	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -67,7 +66,7 @@ type SetImageOptions struct {
 
 var (
 	imageResources = `
-  	pod (po), replicationcontroller (rc), deployment (deploy), daemonset (ds), replicaset (rs), cloneset`
+  	pod (po), replicationcontroller (rc), deployment (deploy), daemonset (ds), replicaset (rs), cloneset(cs)`
 
 	imageLong = templates.LongDesc(`
 		Update existing container image(s) of resources.

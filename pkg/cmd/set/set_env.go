@@ -19,54 +19,38 @@ package set
 import (
 	"context"
 	"errors"
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"sort"
-
-	// "errors"
 	"fmt"
-	appsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
-	"github.com/openkruise/kruise-tools/pkg/api"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
-
-	// "k8s.io/apimachinery/pkg/runtime/schema"
-	// "k8s.io/client-go/util/workqueue"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	// "sync"
-
-	// internalcmdutil "github.com/openkruise/kruise-tools/pkg/cmd/util"
-	// "github.com/openkruise/kruise-tools/pkg/creation"
-	// clonesetcreation "github.com/openkruise/kruise-tools/pkg/creation/cloneset"
-	// apps "k8s.io/api/apps/v1"
 	"regexp"
-	// "sort"
+	"sort"
 	"strings"
 
+	appsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
+	"github.com/openkruise/kruise-tools/pkg/api"
+	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
 
 	"k8s.io/api/core/v1"
-	// meta "k8s.io/apimachinery/pkg/api/meta"
-	// "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	// utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
 	envutil "k8s.io/kubectl/pkg/cmd/set/env"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
-	// "k8s.io/kubectl/pkg/polymorphichelpers"
-	polymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/templates"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 var (
 	validEnvNameRegexp = regexp.MustCompile("[^a-zA-Z0-9_]")
 	envResources       = `
-  	pod (po), replicationcontroller (rc), deployment (deploy), daemonset (ds), job, replicaset (rs), cloneset`
+  	pod (po), replicationcontroller (rc), deployment (deploy), daemonset (ds), job, replicaset (rs), cloneset (cs)`
 
 	envLong = templates.LongDesc(`
 		Update environment variables on a pod template.
