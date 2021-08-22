@@ -25,9 +25,9 @@ import (
 	krollout "github.com/openkruise/kruise-tools/pkg/cmd/rollout"
 	"github.com/spf13/cobra"
 
+	kset "github.com/openkruise/kruise-tools/pkg/cmd/set"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/tools/clientcmd"
-	kset "github.com/openkruise/kruise-tools/pkg/cmd/set"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/kubectl/pkg/cmd/apiresources"
 	"k8s.io/kubectl/pkg/cmd/apply"

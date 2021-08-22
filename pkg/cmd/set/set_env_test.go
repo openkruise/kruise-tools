@@ -68,7 +68,7 @@ func TestSetEnvLocal(t *testing.T) {
 	assert.NoError(t, err)
 	err = opts.Validate()
 	assert.NoError(t, err)
-	err = opts.RunEnv()
+	err = opts.RunEnv(f)
 	assert.NoError(t, err)
 	if bufErr.Len() > 0 {
 		t.Errorf("unexpected error: %s", string(bufErr.String()))

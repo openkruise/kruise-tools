@@ -40,8 +40,8 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	generateversioned "k8s.io/kubectl/pkg/generate/versioned"
-	"k8s.io/kubectl/pkg/polymorphichelpers"
-	// polymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
+	// "k8s.io/kubectl/pkg/polymorphichelpers"
+	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -57,15 +57,12 @@ var (
 
 	resourcesExample = templates.Examples(`
 		# Set a deployments nginx container cpu limits to "200m" and memory to "512Mi"
-		kubectl-kruise set resources deployment nginx-deployment -c=nginx --limits=cpu=200m,memory=512Mi
 		kubectl-kruise set resources cloneset sample -c=nginx --limits=cpu=200m,memory=512Mi
 
 		# Set the resource request and limits for all containers in nginx
-		kubectl-kruise set resources deployment nginx --limits=cpu=200m,memory=512Mi --requests=cpu=100m,memory=256Mi
 		kubectl-kruise set resources cloneset sample --limits=cpu=200m,memory=512Mi --requests=cpu=100m,memory=256Mi
 
 		# Remove the resource requests for resources on containers in nginx
-		kubectl-kruise set resources deployment nginx --limits=cpu=0,memory=0 --requests=cpu=0,memory=0
 		kubectl-kruise set resources cloneset sample --limits=cpu=0,memory=0 --requests=cpu=0,memory=0
 
 		# Print the result (in yaml format) of updating nginx container limits from a local, without hitting the server
@@ -244,7 +241,7 @@ func (o *SetResourcesOptions) Validate() error {
 // Run performs the execution of 'set resources' sub command
 func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
 
-	if len(o.Infos) == 0{
+	if len(o.Infos) == 0 {
 		return nil
 	}
 	resourceType := strings.Split(o.Infos[0].ObjectName(), "/")[0]
@@ -350,7 +347,7 @@ func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
 
 		return utilerrors.NewAggregate(allErrs)
 
-	case "deployment", "deployments":
+	default:
 
 		var allErrs []error
 		patches := CalculatePatches(o.Infos, scheme.DefaultJSONEncoder(), func(obj runtime.Object) ([]byte, error) {
@@ -434,7 +431,6 @@ func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
 			}
 		}
 		return utilerrors.NewAggregate(allErrs)
-	default:
-		return fmt.Errorf("unsupported resource type. available resource types include cloneset and deployment")
+
 	}
 }

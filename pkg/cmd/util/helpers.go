@@ -18,6 +18,7 @@ package util
 
 import (
 	"fmt"
+	"github.com/spf13/cobra"
 	"os"
 	"strings"
 
@@ -64,4 +65,8 @@ func CheckErr(err error) {
 		msg = fmt.Sprintf("error: %s", msg)
 	}
 	fatal(msg, DefaultErrorExitCode)
+}
+
+func AddFieldManagerFlagVar(cmd *cobra.Command, p *string, defaultFieldManager string) {
+	cmd.Flags().StringVar(p, "field-manager", defaultFieldManager, "Name of the manager used to track field ownership.")
 }

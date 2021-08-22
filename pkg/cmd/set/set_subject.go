@@ -48,7 +48,7 @@ var (
 	kubectl-kruise set subject rolebinding admin --user=user1 --user=user2 --group=group1
 
 	# Print the result (in yaml format) of updating rolebinding subjects from a local, without hitting the server
-	kubectl-kruise create rolebinding admin --role=admin --user=admin -o yaml --dry-run=client | kubectl set subject --local -f - --user=foo -o yaml`)
+	kubectl create rolebinding admin --role=admin --user=admin -o yaml --dry-run=client | kubectl-kruise set subject --local -f - --user=foo -o yaml`)
 )
 
 type updateSubjects func(existings []rbacv1.Subject, targets []rbacv1.Subject) (bool, []rbacv1.Subject)

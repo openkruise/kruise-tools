@@ -85,41 +85,38 @@ var (
 
 	envExample = templates.Examples(`
           # Update cloneset 'sample' with a new environment variable
-	  kubectl-kruise set env deployment/nginx-deployment STORAGE_DIR=/local
 	  kubectl-kruise set env cloneset/sample STORAGE_DIR=/local
 
-	  # List the environment variables defined on a deployments 'sample-build'
-	  kubectl-kruise set env deployment/nginx-deployment --list
+	  # List the environment variables defined on a cloneset 'sample'
 	  kubectl-kruise set env cloneset/sample --list
 
 	  # List the environment variables defined on all pods
 	  kubectl-kruise set env pods --all --list
 
-	  # Output modified deployment in YAML, and does not alter the object on the server
-	  kubectl-kruise set env deployment/sample-build STORAGE_DIR=/data -o yaml
-	  kubectl-kruise set env cloneset/sample-build STORAGE_DIR=/data -o yaml
+	  # Output modified cloneset in YAML, and does not alter the object on the server
+	  kubectl-kruise set env cloneset/sample STORAGE_DIR=/data -o yaml
 
 	  # Update all containers in all replication controllers in the project to have ENV=prod
 	  kubectl-kruise set env rc --all ENV=prod
 
 	  # Import environment from a secret
-	  kubectl-kruise set env --from=secret/mysecret deployment/myapp
+	  kubectl-kruise set env --from=secret/mysecret cloneset/sample
 
 	  # Import environment from a config map with a prefix
-	  kubectl-kruise set env --from=configmap/myconfigmap --prefix=MYSQL_ deployment/myapp
+	  kubectl-kruise set env --from=configmap/myconfigmap --prefix=MYSQL_ cloneset/sample
 
           # Import specific keys from a config map
-          kubectl-kruise set env --keys=my-example-key --from=configmap/myconfigmap deployment/myapp
+          kubectl-kruise set env --keys=my-example-key --from=configmap/myconfigmap cloneset/sample
 
 	  # Remove the environment variable ENV from container 'c1' in all deployment configs
-	  kubectl-kruise set env deployments --all --containers="c1" ENV-
+	  kubectl-kruise set env clonesets --all --containers="c1" ENV-
 
 	  # Remove the environment variable ENV from a deployment definition on disk and
 	  # update the deployment config on the server
 	  kubectl-kruise set env -f deploy.json ENV-
 
 	  # Set some of the local shell environment into a deployment config on the server
-	  env | grep RAILS_ | kubectl set env -e - deployment/registry`)
+	  env | grep RAILS_ | kubectl-kruise set env -e - cloneset/sample`)
 )
 
 // EnvOptions holds values for 'set env' command-lone options
@@ -151,15 +148,14 @@ type EnvOptions struct {
 	namespace              string
 	enforceNamespace       bool
 	clientset              *kubernetes.Clientset
-	resRef				   api.ResourceRef
+	resRef                 api.ResourceRef
 
 	genericclioptions.IOStreams
-
 }
 
 type control struct {
-	client   client.Client
-	cache    cache.Cache
+	client client.Client
+	cache  cache.Cache
 }
 
 // NewEnvOptions returns an EnvOptions indicating all containers in the selected
@@ -397,7 +393,7 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 		return err
 	}
 
-	if len(infos) == 0{
+	if len(infos) == 0 {
 		return nil
 	}
 	resourceType := strings.Split(infos[0].ObjectName(), "/")[0]
@@ -405,6 +401,7 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 	switch resourceType {
 	case "cloneset", "clonesets":
 		cfg, err := f.ToRESTConfig()
+
 		if err != nil {
 			return err
 		}
@@ -549,7 +546,7 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 		fmt.Fprintf(o.Out, "%s env updated\n", infos[0].ObjectName())
 
 		return nil
-	case "deployment", "deployments", "rc":
+	default:
 		patches := CalculatePatches(infos, scheme.DefaultJSONEncoder(), func(obj runtime.Object) ([]byte, error) {
 			_, err := o.updatePodSpecForObject(obj, func(spec *v1.PodSpec) error {
 				resolutionErrorsEncountered := false
@@ -716,7 +713,5 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 			}
 		}
 		return utilerrors.NewAggregate(allErrs)
-	default:
-		return fmt.Errorf("unsupported resource type. available resource types include cloneset and deployment")
 	}
 }

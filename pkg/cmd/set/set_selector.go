@@ -72,8 +72,8 @@ var (
         Note: currently selectors can only be set on Service objects.`)
 	selectorExample = templates.Examples(`
         # set the labels and selector before creating a deployment/service pair.
-        kubectl-kruise create service clusterip my-svc --clusterip="None" -o yaml --dry-run=client | kubectl-kruise set selector --local -f - 'environment=qa' -o yaml | kubectl-kruise create -f -
-        kubectl-kruise create deployment my-dep -o yaml --dry-run=client | kubectl-kruise label --local -f - environment=qa -o yaml | kubectl-kruise create -f -`)
+        kubectl create service clusterip my-svc --clusterip="None" -o yaml --dry-run=client | kubectl-kruise set selector --local -f - 'environment=qa' -o yaml | kubectl create -f -
+        kubectl create cloneset sample -o yaml --dry-run=client | kubectl label --local -f - environment=qa -o yaml | kubectl create -f -`)
 )
 
 // NewSelectorOptions returns an initialized SelectorOptions instance

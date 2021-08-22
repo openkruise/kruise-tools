@@ -77,11 +77,9 @@ var (
 
 	imageExample = templates.Examples(`
 		# Set a deployment's nginx container image to 'nginx:1.9.1', and its busybox container image to 'busybox'.
-		kubectl-kruise set image deployment/nginx-deployment busybox=busybox nginx=nginx:1.9.1
 		kubectl-kruise set image cloneset/sample busybox=busybox nginx=nginx:1.9.1
 
 		# Update all deployments' and rc's nginx container's image to 'nginx:1.9.1'
-		kubectl-kruise set image deployments,rc nginx=nginx:1.9.1 --all
 		kubectl-kruise set image cloneset,rc nginx=nginx:1.9.1 --all
 
 		# Update image of all containers of cloneset sample to 'nginx:1.9.1'
@@ -300,7 +298,6 @@ func (o *SetImageOptions) Run() error {
 		if err := o.PrintObj(actual, o.Out); err != nil {
 			allErrs = append(allErrs, err)
 		}
-
 
 	}
 	return utilerrors.NewAggregate(allErrs)
