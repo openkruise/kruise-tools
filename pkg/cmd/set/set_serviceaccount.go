@@ -23,7 +23,7 @@ import (
 	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -184,9 +184,9 @@ func (o *SetServiceAccountOptions) Complete(f cmdutil.Factory, cmd *cobra.Comman
 
 // Run creates and applies the patch either locally or calling apiserver.
 func (o *SetServiceAccountOptions) Run() error {
-	patchErrs := []error{}
+	var patchErrs []error
 	patchFn := func(obj runtime.Object) ([]byte, error) {
-		_, err := o.updatePodSpecForObject(obj, func(podSpec *v1.PodSpec) error {
+		_, err := o.updatePodSpecForObject(obj, func(podSpec *corev1.PodSpec) error {
 			podSpec.ServiceAccountName = o.serviceAccountName
 			return nil
 		})

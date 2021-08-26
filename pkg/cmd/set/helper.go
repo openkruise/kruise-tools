@@ -28,8 +28,8 @@ import (
 
 // selectContainers allows one or more containers to be matched against a string or wildcard
 func selectContainers(containers []v1.Container, spec string) ([]*v1.Container, []*v1.Container) {
-	out := []*v1.Container{}
-	skipped := []*v1.Container{}
+	var out []*v1.Container
+	var skipped []*v1.Container
 	for i, c := range containers {
 		if selectString(c.Name, spec) {
 			out = append(out, &containers[i])
@@ -131,7 +131,7 @@ func findEnv(env []v1.EnvVar, name string) (v1.EnvVar, bool) {
 }
 
 func updateEnv(existing []v1.EnvVar, env []v1.EnvVar, remove []string) []v1.EnvVar {
-	out := []v1.EnvVar{}
+	var out []v1.EnvVar
 	covered := sets.NewString(remove...)
 	for _, e := range existing {
 		if covered.Has(e.Name) {

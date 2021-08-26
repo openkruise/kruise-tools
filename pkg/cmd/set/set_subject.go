@@ -211,7 +211,7 @@ func (o *SubjectOptions) Validate() error {
 // Run performs the execution of "set subject" sub command
 func (o *SubjectOptions) Run(fn updateSubjects) error {
 	patches := CalculatePatches(o.Infos, scheme.DefaultJSONEncoder(), func(obj runtime.Object) ([]byte, error) {
-		subjects := []rbacv1.Subject{}
+		var subjects []rbacv1.Subject
 		for _, user := range sets.NewString(o.Users...).List() {
 			subject := rbacv1.Subject{
 				Kind:     rbacv1.UserKind,
@@ -251,7 +251,7 @@ func (o *SubjectOptions) Run(fn updateSubjects) error {
 		return nil, err
 	})
 
-	allErrs := []error{}
+	var allErrs []error
 	for _, patch := range patches {
 		info := patch.Info
 		name := info.ObjectName()

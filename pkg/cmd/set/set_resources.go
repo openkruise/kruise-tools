@@ -18,7 +18,6 @@ package set
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -27,7 +26,7 @@ import (
 	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -90,7 +89,7 @@ type SetResourcesOptions struct {
 
 	Limits               string
 	Requests             string
-	ResourceRequirements v1.ResourceRequirements
+	ResourceRequirements corev1.ResourceRequirements
 
 	UpdatePodSpecForObject polymorphichelpers.UpdatePodSpecForObjectFunc
 	Resources              []string
@@ -152,7 +151,11 @@ func NewCmdResources(f cmdutil.Factory, streams genericclioptions.IOStreams) *co
 func (o *SetResourcesOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []string) error {
 	var err error
 
-	o.RecordFlags.Complete(cmd)
+	err = o.RecordFlags.Complete(cmd)
+	if err != nil {
+		return err
+	}
+
 	o.Recorder, err = o.RecordFlags.ToRecorder()
 	if err != nil {
 		return err
@@ -277,7 +280,6 @@ func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
 			return fmt.Errorf("failed to get %v of %v: %v", o.Infos[0].Namespace, o.Infos[0].Name, err)
 		}
 
-		resolutionErrorsEncountered := false
 		containers, _ := selectContainers(cs.Spec.Template.Spec.Containers, o.ContainerSelector)
 
 		_, err = meta.NewAccessor().Name(cs)
@@ -308,14 +310,14 @@ func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
 		if len(containers) != 0 {
 			for i := range containers {
 				if len(o.Limits) != 0 && len(containers[i].Resources.Limits) == 0 {
-					containers[i].Resources.Limits = make(v1.ResourceList)
+					containers[i].Resources.Limits = make(corev1.ResourceList)
 				}
 				for key, value := range o.ResourceRequirements.Limits {
 					containers[i].Resources.Limits[key] = value
 				}
 
 				if len(o.Requests) != 0 && len(containers[i].Resources.Requests) == 0 {
-					containers[i].Resources.Requests = make(v1.ResourceList)
+					containers[i].Resources.Requests = make(corev1.ResourceList)
 				}
 				for key, value := range o.ResourceRequirements.Requests {
 					containers[i].Resources.Requests[key] = value
@@ -338,10 +340,6 @@ func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
 			return err
 		}
 
-		if resolutionErrorsEncountered {
-			return errors.New("failed to retrieve valueFrom references")
-		}
-
 		fmt.Fprintf(o.Out, "%s resource requirements updated\n", o.Infos[0].ObjectName())
 
 		return utilerrors.NewAggregate(allErrs)
@@ -351,19 +349,19 @@ func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
 		var allErrs []error
 		patches := CalculatePatches(o.Infos, scheme.DefaultJSONEncoder(), func(obj runtime.Object) ([]byte, error) {
 			transformed := false
-			_, err := o.UpdatePodSpecForObject(obj, func(spec *v1.PodSpec) error {
+			_, err := o.UpdatePodSpecForObject(obj, func(spec *corev1.PodSpec) error {
 				containers, _ := selectContainers(spec.Containers, o.ContainerSelector)
 				if len(containers) != 0 {
 					for i := range containers {
 						if len(o.Limits) != 0 && len(containers[i].Resources.Limits) == 0 {
-							containers[i].Resources.Limits = make(v1.ResourceList)
+							containers[i].Resources.Limits = make(corev1.ResourceList)
 						}
 						for key, value := range o.ResourceRequirements.Limits {
 							containers[i].Resources.Limits[key] = value
 						}
 
 						if len(o.Requests) != 0 && len(containers[i].Resources.Requests) == 0 {
-							containers[i].Resources.Requests = make(v1.ResourceList)
+							containers[i].Resources.Requests = make(corev1.ResourceList)
 						}
 						for key, value := range o.ResourceRequirements.Requests {
 							containers[i].Resources.Requests[key] = value

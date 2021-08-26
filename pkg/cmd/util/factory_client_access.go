@@ -19,34 +19,19 @@ limitations under the License.
 package util
 
 import (
-	// "errors"
-	// "github.com/openkruise/kruise-tools/pkg/cmd/util/openapi"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/tools/clientcmd"
-	"sync"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
-	// "k8s.io/client-go/discovery"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
-	// "k8s.io/client-go/tools/clientcmd"
-	// openapi "github.com/openkruise/kruise-tools/pkg/cmd/util/openapi"
-	// openapivalidation "k8s.io/kubectl/pkg/util/openapi/validation"
-	// "k8s.io/kubectl/pkg/validation"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 type factoryImpl struct {
 	clientGetter genericclioptions.RESTClientGetter
-
-	// Caches OpenAPI document and parsed resources
-	// openAPIParser *openapi.CachedOpenAPIParser
-	// openAPIGetter *openapi.CachedOpenAPIGetter
-	parser sync.Once
-	getter sync.Once
 }
 
 func NewFactory(clientGetter genericclioptions.RESTClientGetter) *factoryImpl {
@@ -87,7 +72,11 @@ func (f *factoryImpl) RESTClient() (*restclient.RESTClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	setKubernetesDefaults(clientConfig)
+
+	err = setKubernetesDefaults(clientConfig)
+	if err != nil {
+		return nil, err
+	}
 	return restclient.RESTClientFor(clientConfig)
 }
 
@@ -128,44 +117,6 @@ func (f *factoryImpl) UnstructuredClientForMapping(mapping *meta.RESTMapping) (r
 	cfg.GroupVersion = &gv
 	return restclient.RESTClientFor(cfg)
 }
-
-/*
-func (f *factoryImpl) Validator(validate bool) (validation.Schema, error) {
-	if !validate {
-		return validation.NullSchema{}, nil
-	}
-
-	resources, err := f.OpenAPISchema()
-	if err != nil {
-		return nil, err
-	}
-
-	return validation.ConjunctiveSchema{
-		openapivalidation.NewSchemaValidation(resources),
-		validation.NoDoubleKeySchema{},
-	}, nil
-}
-
-// OpenAPISchema returns metadata and structural information about
-// Kubernetes object definitions.
-func (f *factoryImpl) OpenAPISchema() (openapi.Resources, error) {
-	openAPIGetter := f.OpenAPIGetter()
-	if openAPIGetter == nil {
-		return nil, errors.New("no openapi getter")
-	}
-
-	// Lazily initialize the OpenAPIParser once
-	f.parser.Do(func() {
-		// Create the caching OpenAPIParser
-		f.openAPIParser = openapi.NewOpenAPIParser(f.OpenAPIGetter())
-	})
-
-	// Delegate to the OpenAPIPArser
-	return f.openAPIParser.Parse()
-}
-
-
-*/
 
 func (f *factoryImpl) ToRESTConfig() (*restclient.Config, error) {
 	return f.clientGetter.ToRESTConfig()

@@ -297,7 +297,6 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 			NamespaceParam(o.namespace).DefaultNamespace().
 			FilenameParam(o.enforceNamespace, &o.FilenameOptions).
 			Flatten()
-
 		if !o.Local {
 			b = b.
 				LabelSelectorParam(o.Selector).
@@ -377,13 +376,8 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 		return err
 	}
 
-	if len(infos) == 0 {
-		return nil
-	}
-	resourceType := strings.Split(infos[0].ObjectName(), "/")[0]
-
-	switch resourceType {
-	case "cloneset", "clonesets":
+	switch infos[0].Object.(type){
+	case *appsv1alpha1.CloneSet:
 		cfg, err := f.ToRESTConfig()
 
 		if err != nil {
@@ -503,14 +497,14 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 				}
 
 				// Print any resolution errors
-				errs := []string{}
+				var errs []string
 				for err, vars := range resolveErrors {
 					sort.Strings(vars)
 					errs = append(errs, fmt.Sprintf("error retrieving reference for %s: %v", strings.Join(vars, ", "), err))
 				}
 				sort.Strings(errs)
 				for _, err := range errs {
-					fmt.Fprintln(o.ErrOut, err)
+					_, _ = fmt.Fprintln(o.ErrOut, err)
 				}
 			}
 		}
@@ -621,14 +615,14 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 						}
 
 						// Print any resolution errors
-						errs := []string{}
+						var errs []string
 						for err, vars := range resolveErrors {
 							sort.Strings(vars)
 							errs = append(errs, fmt.Sprintf("error retrieving reference for %s: %v", strings.Join(vars, ", "), err))
 						}
 						sort.Strings(errs)
 						for _, err := range errs {
-							fmt.Fprintln(o.ErrOut, err)
+							_, _ = fmt.Fprintln(o.ErrOut, err)
 						}
 					}
 				}
@@ -648,7 +642,7 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 			return nil
 		}
 
-		allErrs := []error{}
+		var allErrs []error
 
 		for _, patch := range patches {
 			info := patch.Info

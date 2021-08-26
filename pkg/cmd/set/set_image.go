@@ -24,7 +24,7 @@ import (
 	kresource "github.com/openkruise/kruise-tools/pkg/resource"
 	"github.com/spf13/cobra"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -133,7 +133,11 @@ func NewCmdImage(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.
 func (o *SetImageOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []string) error {
 	var err error
 
-	o.RecordFlags.Complete(cmd)
+	err = o.RecordFlags.Complete(cmd)
+	if err != nil {
+		return err
+	}
+
 	o.Recorder, err = o.RecordFlags.ToRecorder()
 	if err != nil {
 		return err
@@ -205,7 +209,7 @@ func (o *SetImageOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args [
 
 // Validate makes sure provided values in SetImageOptions are valid
 func (o *SetImageOptions) Validate() error {
-	errors := []error{}
+	var errors []error
 	if o.All && len(o.Selector) > 0 {
 		errors = append(errors, fmt.Errorf("cannot set --all and --selector at the same time"))
 	}
@@ -228,7 +232,7 @@ func (o *SetImageOptions) Run() error {
 	allErrs := []error{}
 
 	patches := CalculatePatches(o.Infos, scheme.DefaultJSONEncoder(), func(obj runtime.Object) ([]byte, error) {
-		_, err := o.UpdatePodSpecForObject(obj, func(spec *v1.PodSpec) error {
+		_, err := o.UpdatePodSpecForObject(obj, func(spec *corev1.PodSpec) error {
 			for name, image := range o.ContainerImages {
 				resolvedImageName, err := o.ResolveImage(image)
 				if err != nil {
@@ -302,7 +306,7 @@ func (o *SetImageOptions) Run() error {
 	return utilerrors.NewAggregate(allErrs)
 }
 
-func setImage(containers []v1.Container, containerName string, image string) bool {
+func setImage(containers []corev1.Container, containerName string, image string) bool {
 	containerFound := false
 	// Find the container to update, and update its image
 	for i, c := range containers {

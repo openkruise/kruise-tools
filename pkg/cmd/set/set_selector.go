@@ -22,7 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -246,7 +246,7 @@ func updateSelectorForObject(obj runtime.Object, selector metav1.LabelSelector) 
 	}
 	var err error
 	switch t := obj.(type) {
-	case *v1.Service:
+	case *corev1.Service:
 		t.Spec.Selector, err = copyOldSelector()
 	default:
 		err = fmt.Errorf("setting a selector is only supported for Services")
