@@ -376,6 +376,10 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 		return err
 	}
 
+	if len(infos) == 0{
+		return nil
+	}
+
 	switch infos[0].Object.(type){
 	case *appsv1alpha1.CloneSet:
 		cfg, err := f.ToRESTConfig()

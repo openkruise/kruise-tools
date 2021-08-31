@@ -19,8 +19,6 @@ package set
 import (
 	"context"
 	"fmt"
-	"strings"
-
 	appsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	"github.com/openkruise/kruise-tools/pkg/api"
 	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
@@ -246,10 +244,9 @@ func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
 	if len(o.Infos) == 0 {
 		return nil
 	}
-	resourceType := strings.Split(o.Infos[0].ObjectName(), "/")[0]
 
-	switch resourceType {
-	case "cloneset", "clonesets":
+	switch o.Infos[0].Object.(type) {
+	case *appsv1alpha1.CloneSet:
 		var allErrs []error
 		transformed := false
 
