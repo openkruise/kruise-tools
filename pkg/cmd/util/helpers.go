@@ -21,6 +21,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"k8s.io/klog"
 )
 
@@ -64,4 +66,8 @@ func CheckErr(err error) {
 		msg = fmt.Sprintf("error: %s", msg)
 	}
 	fatal(msg, DefaultErrorExitCode)
+}
+
+func AddFieldManagerFlagVar(cmd *cobra.Command, p *string, defaultFieldManager string) {
+	cmd.Flags().StringVar(p, "field-manager", defaultFieldManager, "Name of the manager used to track field ownership.")
 }
