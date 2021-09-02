@@ -18,7 +18,6 @@ package set
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	kresource "github.com/openkruise/kruise-tools/pkg/resource"
@@ -26,6 +25,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
