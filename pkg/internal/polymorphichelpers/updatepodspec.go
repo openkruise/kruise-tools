@@ -19,6 +19,7 @@ package polymorphichelpers
 import (
 	"fmt"
 
+	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -32,6 +33,9 @@ import (
 
 func updatePodSpecForObject(obj runtime.Object, fn func(*v1.PodSpec) error) (bool, error) {
 	switch t := obj.(type) {
+
+	case *kruiseappsv1alpha1.CloneSet:
+		return true, fn(&t.Spec.Template.Spec)
 	case *v1.Pod:
 		return true, fn(&t.Spec)
 		// ReplicationController

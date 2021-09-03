@@ -10,7 +10,7 @@ So, `kubectl-kruise` was created.
 The development of  `kubectl-kruise`  is in progress, if you wanna to experience it, you can clone it and make it:
 
 ```
-make build && cp kubectl-kruise /usr/local/bin
+make build && cp bin/kubectl-kruise /usr/local/bin
 
 ```
 
