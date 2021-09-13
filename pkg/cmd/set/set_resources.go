@@ -18,8 +18,11 @@ package set
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
 	appsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
+	appsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
 	"github.com/openkruise/kruise-tools/pkg/api"
 	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
@@ -272,24 +275,24 @@ func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
 			return err
 		}
 
-		cs := &appsv1alpha1.CloneSet{}
-		if err := ctrl.client.Get(context.TODO(), types.NamespacedName{Namespace: o.Infos[0].Namespace, Name: o.Infos[0].Name}, cs); err != nil {
+		res := &appsv1alpha1.CloneSet{}
+		if err := ctrl.client.Get(context.TODO(), types.NamespacedName{Namespace: o.Infos[0].Namespace, Name: o.Infos[0].Name}, res); err != nil {
 			return fmt.Errorf("failed to get %v of %v: %v", o.Infos[0].Namespace, o.Infos[0].Name, err)
 		}
 
-		containers, _ := selectContainers(cs.Spec.Template.Spec.Containers, o.ContainerSelector)
+		containers, _ := selectContainers(res.Spec.Template.Spec.Containers, o.ContainerSelector)
 
-		_, err = meta.NewAccessor().Name(cs)
+		_, err = meta.NewAccessor().Name(res)
 		if err != nil {
 			return err
 		}
 
-		gvks, _, err := scheme.Scheme.ObjectKinds(cs)
+		gvks, _, err := scheme.Scheme.ObjectKinds(res)
 		if err != nil {
 			return err
 		}
 
-		objKind := cs.GetObjectKind().GroupVersionKind().Kind
+		objKind := res.GetObjectKind().GroupVersionKind().Kind
 		if len(objKind) == 0 {
 			for _, gvk := range gvks {
 				if len(gvk.Kind) == 0 {
@@ -329,18 +332,122 @@ func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
 		}
 
 		// record this change (for rollout history)
-		if err := o.Recorder.Record(cs); err != nil {
+		if err := o.Recorder.Record(res); err != nil {
 			klog.V(4).Infof("error recording current command: %v", err)
 		}
 
-		if err := ctrl.client.Update(context.TODO(), cs); err != nil {
+		if !o.Local {
+			if err := ctrl.client.Update(context.TODO(), res); err != nil {
+				return err
+			}
+			fmt.Fprintf(o.Out, "%s resource requirements updated\n", o.Infos[0].ObjectName())
+		}
+
+
+		if err := o.PrintObj(res, o.Out); err != nil {
+			return errors.New(err.Error())
+		}
+
+		return utilerrors.NewAggregate(allErrs)
+	case *appsv1beta1.StatefulSet:
+		var allErrs []error
+		transformed := false
+
+		cfg, err := f.ToRESTConfig()
+		if err != nil {
 			return err
 		}
 
-		fmt.Fprintf(o.Out, "%s resource requirements updated\n", o.Infos[0].ObjectName())
+		schemeGet := api.GetScheme()
+		mapper, err := apiutil.NewDiscoveryRESTMapper(cfg)
+
+		if err != nil {
+			return err
+		}
+
+		ctrl := &control{}
+
+		if ctrl.client, err = client.New(cfg, client.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
+			return err
+		}
+
+		if ctrl.cache, err = cache.New(cfg, cache.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
+			return err
+		}
+
+		res := &appsv1beta1.StatefulSet{}
+		if err := ctrl.client.Get(context.TODO(), types.NamespacedName{Namespace: o.Infos[0].Namespace, Name: o.Infos[0].Name}, res); err != nil {
+			return fmt.Errorf("failed to get %v of %v: %v", o.Infos[0].Namespace, o.Infos[0].Name, err)
+		}
+
+		containers, _ := selectContainers(res.Spec.Template.Spec.Containers, o.ContainerSelector)
+
+		_, err = meta.NewAccessor().Name(res)
+		if err != nil {
+			return err
+		}
+
+		gvks, _, err := scheme.Scheme.ObjectKinds(res)
+		if err != nil {
+			return err
+		}
+
+		objKind := res.GetObjectKind().GroupVersionKind().Kind
+		if len(objKind) == 0 {
+			for _, gvk := range gvks {
+				if len(gvk.Kind) == 0 {
+					continue
+				}
+				if len(gvk.Version) == 0 || gvk.Version == runtime.APIVersionInternal {
+					continue
+				}
+
+				objKind = gvk.Kind
+				break
+			}
+		}
+
+		if len(containers) != 0 {
+			for i := range containers {
+				if len(o.Limits) != 0 && len(containers[i].Resources.Limits) == 0 {
+					containers[i].Resources.Limits = make(corev1.ResourceList)
+				}
+				for key, value := range o.ResourceRequirements.Limits {
+					containers[i].Resources.Limits[key] = value
+				}
+
+				if len(o.Requests) != 0 && len(containers[i].Resources.Requests) == 0 {
+					containers[i].Resources.Requests = make(corev1.ResourceList)
+				}
+				for key, value := range o.ResourceRequirements.Requests {
+					containers[i].Resources.Requests[key] = value
+				}
+				transformed = true
+			}
+		} else {
+			allErrs = append(allErrs, fmt.Errorf("error: unable to find container named %s", o.ContainerSelector))
+		}
+		if !transformed {
+			return nil
+		}
+
+		// record this change (for rollout history)
+		if err := o.Recorder.Record(res); err != nil {
+			klog.V(4).Infof("error recording current command: %v", err)
+		}
+
+		if !o.Local {
+			if err := ctrl.client.Update(context.TODO(), res); err != nil {
+				return err
+			}
+			fmt.Fprintf(o.Out, "%s resource requirements updated\n", o.Infos[0].ObjectName())
+		}
+
+		if err := o.PrintObj(res, o.Out); err != nil {
+			return errors.New(err.Error())
+		}
 
 		return utilerrors.NewAggregate(allErrs)
-
 	default:
 
 		var allErrs []error

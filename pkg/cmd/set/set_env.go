@@ -24,7 +24,8 @@ import (
 	"sort"
 	"strings"
 
-	appsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
+	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
+	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
 	"github.com/openkruise/kruise-tools/pkg/api"
 	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
@@ -380,8 +381,8 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 		return nil
 	}
 
-	switch infos[0].Object.(type){
-	case *appsv1alpha1.CloneSet:
+	switch infos[0].Object.(type) {
+	case *kruiseappsv1alpha1.CloneSet:
 		cfg, err := f.ToRESTConfig()
 
 		if err != nil {
@@ -405,25 +406,26 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 			return err
 		}
 
-		cs := &appsv1alpha1.CloneSet{}
-		if err := ctrl.client.Get(context.TODO(), types.NamespacedName{Namespace: o.namespace, Name: infos[0].Name}, cs); err != nil {
+		res := &kruiseappsv1alpha1.CloneSet{}
+
+		if err := ctrl.client.Get(context.TODO(), types.NamespacedName{Namespace: o.namespace, Name: infos[0].Name}, res); err != nil {
 			return fmt.Errorf("failed to get %v of %v: %v", o.namespace, infos[0].Name, err)
 		}
 
 		resolutionErrorsEncountered := false
-		containers, _ := selectContainers(cs.Spec.Template.Spec.Containers, o.ContainerSelector)
+		containers, _ := selectContainers(res.Spec.Template.Spec.Containers, o.ContainerSelector)
 
-		objName, err := meta.NewAccessor().Name(cs)
+		objName, err := meta.NewAccessor().Name(res)
 		if err != nil {
 			return err
 		}
 
-		gvks, _, err := scheme.Scheme.ObjectKinds(cs)
+		gvks, _, err := scheme.Scheme.ObjectKinds(res)
 		if err != nil {
 			return err
 		}
 
-		objKind := cs.GetObjectKind().GroupVersionKind().Kind
+		objKind := res.GetObjectKind().GroupVersionKind().Kind
 		if len(objKind) == 0 {
 			for _, gvk := range gvks {
 				if len(gvk.Kind) == 0 {
@@ -439,8 +441,8 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 		}
 
 		if len(containers) == 0 {
-			if gvks, _, err := scheme.Scheme.ObjectKinds(cs); err == nil {
-				objKind := cs.GetObjectKind().GroupVersionKind().Kind
+			if gvks, _, err := scheme.Scheme.ObjectKinds(res); err == nil {
+				objKind := res.GetObjectKind().GroupVersionKind().Kind
 				if len(objKind) == 0 {
 					for _, gvk := range gvks {
 						if len(gvk.Kind) == 0 {
@@ -486,7 +488,7 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 						continue
 					}
 
-					value, err := envutil.GetEnvVarRefValue(o.clientset, o.namespace, store, env.ValueFrom, cs, c)
+					value, err := envutil.GetEnvVarRefValue(o.clientset, o.namespace, store, env.ValueFrom, res, c)
 					// Print the resolved value
 					if err == nil {
 						fmt.Fprintf(o.Out, "%s=%s\n", env.Name, value)
@@ -513,8 +515,11 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 			}
 		}
 
-		if err := ctrl.client.Update(context.TODO(), cs); err != nil {
-			return err
+		if !o.Local {
+			if err := ctrl.client.Update(context.TODO(), res); err != nil {
+				return err
+			}
+			fmt.Fprintf(o.Out, "%s env updated\n", infos[0].ObjectName())
 		}
 
 		if resolutionErrorsEncountered {
@@ -525,7 +530,162 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 			return nil
 		}
 
-		fmt.Fprintf(o.Out, "%s env updated\n", infos[0].ObjectName())
+		if err := o.PrintObj(res, o.Out); err != nil {
+			return errors.New(err.Error())
+		}
+
+		return nil
+	case *kruiseappsv1beta1.StatefulSet:
+		cfg, err := f.ToRESTConfig()
+
+		if err != nil {
+			return err
+		}
+
+		schemeGet := api.GetScheme()
+		mapper, err := apiutil.NewDiscoveryRESTMapper(cfg)
+
+		if err != nil {
+			return err
+		}
+
+		ctrl := &control{}
+
+		if ctrl.client, err = client.New(cfg, client.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
+			return err
+		}
+
+		if ctrl.cache, err = cache.New(cfg, cache.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
+			return err
+		}
+
+		res := &kruiseappsv1beta1.StatefulSet{}
+
+		if err := ctrl.client.Get(context.TODO(), types.NamespacedName{Namespace: o.namespace, Name: infos[0].Name}, res); err != nil {
+			return fmt.Errorf("failed to get %v of %v: %v", o.namespace, infos[0].Name, err)
+		}
+
+		resolutionErrorsEncountered := false
+		containers, _ := selectContainers(res.Spec.Template.Spec.Containers, o.ContainerSelector)
+
+		objName, err := meta.NewAccessor().Name(res)
+		if err != nil {
+			return err
+		}
+
+		gvks, _, err := scheme.Scheme.ObjectKinds(res)
+		if err != nil {
+			return err
+		}
+
+		objKind := res.GetObjectKind().GroupVersionKind().Kind
+		if len(objKind) == 0 {
+			for _, gvk := range gvks {
+				if len(gvk.Kind) == 0 {
+					continue
+				}
+				if len(gvk.Version) == 0 || gvk.Version == runtime.APIVersionInternal {
+					continue
+				}
+
+				objKind = gvk.Kind
+				break
+			}
+		}
+
+		if len(containers) == 0 {
+			if gvks, _, err := scheme.Scheme.ObjectKinds(res); err == nil {
+				objKind := res.GetObjectKind().GroupVersionKind().Kind
+				if len(objKind) == 0 {
+					for _, gvk := range gvks {
+						if len(gvk.Kind) == 0 {
+							continue
+						}
+						if len(gvk.Version) == 0 || gvk.Version == runtime.APIVersionInternal {
+							continue
+						}
+
+						objKind = gvk.Kind
+						break
+					}
+				}
+
+				fmt.Fprintf(o.ErrOut, "warning: %s/%s does not have any containers matching %q\n", objKind, objName, o.ContainerSelector)
+			}
+			return nil
+		}
+
+		for _, c := range containers {
+			if !o.Overwrite {
+				if err := validateNoOverwrites(c.Env, env); err != nil {
+					return err
+				}
+			}
+
+			c.Env = updateEnv(c.Env, env, remove)
+			if o.List {
+				resolveErrors := map[string][]string{}
+				store := envutil.NewResourceStore()
+
+				fmt.Fprintf(o.Out, "# %s %s, container %s\n", objKind, objName, c.Name)
+				for _, env := range c.Env {
+					// Print the simple value
+					if env.ValueFrom == nil {
+						fmt.Fprintf(o.Out, "%s=%s\n", env.Name, env.Value)
+						continue
+					}
+
+					// Print the reference version
+					if !o.Resolve {
+						fmt.Fprintf(o.Out, "# %s from %s\n", env.Name, envutil.GetEnvVarRefString(env.ValueFrom))
+						continue
+					}
+
+					value, err := envutil.GetEnvVarRefValue(o.clientset, o.namespace, store, env.ValueFrom, res, c)
+					// Print the resolved value
+					if err == nil {
+						fmt.Fprintf(o.Out, "%s=%s\n", env.Name, value)
+						continue
+					}
+
+					// Print the reference version and save the resolve error
+					fmt.Fprintf(o.Out, "# %s from %s\n", env.Name, envutil.GetEnvVarRefString(env.ValueFrom))
+					errString := err.Error()
+					resolveErrors[errString] = append(resolveErrors[errString], env.Name)
+					resolutionErrorsEncountered = true
+				}
+
+				// Print any resolution errors
+				var errs []string
+				for err, vars := range resolveErrors {
+					sort.Strings(vars)
+					errs = append(errs, fmt.Sprintf("error retrieving reference for %s: %v", strings.Join(vars, ", "), err))
+				}
+				sort.Strings(errs)
+				for _, err := range errs {
+					_, _ = fmt.Fprintln(o.ErrOut, err)
+				}
+			}
+		}
+
+		if !o.Local {
+			if err := ctrl.client.Update(context.TODO(), res); err != nil {
+				return err
+			}
+			fmt.Fprintf(o.Out, "%s env updated\n", infos[0].ObjectName())
+		}
+
+		if resolutionErrorsEncountered {
+			return errors.New("failed to retrieve valueFrom references")
+		}
+
+		if o.List {
+			return nil
+		}
+
+		if err := o.PrintObj(res, o.Out); err != nil {
+			return errors.New(err.Error())
+		}
 
 		return nil
 	default:
