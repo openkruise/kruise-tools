@@ -35,6 +35,7 @@ import (
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
+
 )
 
 // SetImageOptions ImageOptions is the start of the data required to perform the operation.  As new fields are added, add them here instead of
@@ -229,7 +230,7 @@ func (o *SetImageOptions) Validate() error {
 
 // Run performs the execution of 'set image' sub command
 func (o *SetImageOptions) Run() error {
-	allErrs := []error{}
+	var allErrs []error
 
 	patches := CalculatePatches(o.Infos, scheme.DefaultJSONEncoder(), func(obj runtime.Object) ([]byte, error) {
 		_, err := o.UpdatePodSpecForObject(obj, func(spec *corev1.PodSpec) error {

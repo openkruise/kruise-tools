@@ -73,7 +73,7 @@ func (f *factoryImpl) RESTClient() (*restclient.RESTClient, error) {
 		return nil, err
 	}
 
-	err = setKubernetesDefaults(clientConfig)
+	err = restclient.SetKubernetesDefaults(clientConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (f *factoryImpl) ClientForMapping(mapping *meta.RESTMapping) (resource.REST
 	if err != nil {
 		return nil, err
 	}
-	if err := setKubernetesDefaults(cfg); err != nil {
+	if err := restclient.SetKubernetesDefaults(cfg); err != nil {
 		return nil, err
 	}
 	gvk := mapping.GroupVersionKind
