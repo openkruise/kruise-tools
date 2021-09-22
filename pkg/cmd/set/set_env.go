@@ -27,6 +27,8 @@ import (
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
 	"github.com/openkruise/kruise-tools/pkg/api"
+	"github.com/openkruise/kruise-tools/pkg/cmd/util"
+	"github.com/openkruise/kruise-tools/pkg/fetcher"
 	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
 
@@ -39,13 +41,11 @@ import (
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog"
 	envutil "k8s.io/kubectl/pkg/cmd/set/env"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/templates"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 var (
@@ -69,7 +69,7 @@ var (
 		` + envResources)
 
 	envExample = templates.Examples(`
-          # Update cloneset 'sample' with a new environment variable
+      # Update cloneset 'sample' with a new environment variable
 	  kubectl-kruise set env cloneset/sample STORAGE_DIR=/local
 
 	  # List the environment variables defined on a cloneset 'sample'
@@ -90,8 +90,8 @@ var (
 	  # Import environment from a config map with a prefix
 	  kubectl-kruise set env --from=configmap/myconfigmap --prefix=MYSQL_ cloneset/sample
 
-          # Import specific keys from a config map
-          kubectl-kruise set env --keys=my-example-key --from=configmap/myconfigmap cloneset/sample
+      # Import specific keys from a config map
+      kubectl-kruise set env --keys=my-example-key --from=configmap/myconfigmap cloneset/sample
 
 	  # Remove the environment variable ENV from container 'c1' in all deployment configs
 	  kubectl-kruise set env clonesets --all --containers="c1" ENV-
@@ -136,11 +136,6 @@ type EnvOptions struct {
 	resRef                 api.ResourceRef
 
 	genericclioptions.IOStreams
-}
-
-type control struct {
-	client client.Client
-	cache  cache.Cache
 }
 
 // NewEnvOptions returns an EnvOptions indicating all containers in the selected
@@ -377,39 +372,19 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 		return err
 	}
 
-	if len(infos) == 0{
+	if len(infos) == 0 {
 		return nil
 	}
 
+	cl := util.BaseClient()
+
 	switch infos[0].Object.(type) {
 	case *kruiseappsv1alpha1.CloneSet:
-		cfg, err := f.ToRESTConfig()
 
-		if err != nil {
-			return err
-		}
-
-		schemeGet := api.GetScheme()
-		mapper, err := apiutil.NewDiscoveryRESTMapper(cfg)
-
-		if err != nil {
-			return err
-		}
-
-		ctrl := &control{}
-
-		if ctrl.client, err = client.New(cfg, client.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
-			return err
-		}
-
-		if ctrl.cache, err = cache.New(cfg, cache.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
-			return err
-		}
-
-		res := &kruiseappsv1alpha1.CloneSet{}
-
-		if err := ctrl.client.Get(context.TODO(), types.NamespacedName{Namespace: o.namespace, Name: infos[0].Name}, res); err != nil {
-			return fmt.Errorf("failed to get %v of %v: %v", o.namespace, infos[0].Name, err)
+		res, found, err := fetcher.GetCloneSetInCache(o.namespace, infos[0].Name, cl.Reader)
+		if err != nil || !found {
+			klog.Error(err)
+			return fmt.Errorf("failed to retrieve CloneSet %s: %s", infos[0].Name, err.Error())
 		}
 
 		resolutionErrorsEncountered := false
@@ -516,10 +491,9 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 		}
 
 		if !o.Local {
-			if err := ctrl.client.Update(context.TODO(), res); err != nil {
+			if err := cl.Client.Update(context.TODO(), res); err != nil {
 				return err
 			}
-			fmt.Fprintf(o.Out, "%s env updated\n", infos[0].ObjectName())
 		}
 
 		if resolutionErrorsEncountered {
@@ -536,32 +510,9 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 
 		return nil
 	case *kruiseappsv1beta1.StatefulSet:
-		cfg, err := f.ToRESTConfig()
-
-		if err != nil {
-			return err
-		}
-
-		schemeGet := api.GetScheme()
-		mapper, err := apiutil.NewDiscoveryRESTMapper(cfg)
-
-		if err != nil {
-			return err
-		}
-
-		ctrl := &control{}
-
-		if ctrl.client, err = client.New(cfg, client.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
-			return err
-		}
-
-		if ctrl.cache, err = cache.New(cfg, cache.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
-			return err
-		}
-
-		res := &kruiseappsv1beta1.StatefulSet{}
-
-		if err := ctrl.client.Get(context.TODO(), types.NamespacedName{Namespace: o.namespace, Name: infos[0].Name}, res); err != nil {
+		res, found, err := fetcher.GetAdvancedStsInCache(o.namespace, infos[0].Name, cl.Reader)
+		if err != nil || !found {
+			klog.Error(err)
 			return fmt.Errorf("failed to get %v of %v: %v", o.namespace, infos[0].Name, err)
 		}
 
@@ -669,10 +620,9 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 		}
 
 		if !o.Local {
-			if err := ctrl.client.Update(context.TODO(), res); err != nil {
+			if err := cl.Client.Update(context.TODO(), res); err != nil {
 				return err
 			}
-			fmt.Fprintf(o.Out, "%s env updated\n", infos[0].ObjectName())
 		}
 
 		if resolutionErrorsEncountered {

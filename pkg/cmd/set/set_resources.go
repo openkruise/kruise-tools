@@ -23,7 +23,8 @@ import (
 
 	appsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	appsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
-	"github.com/openkruise/kruise-tools/pkg/api"
+	"github.com/openkruise/kruise-tools/pkg/cmd/util"
+	"github.com/openkruise/kruise-tools/pkg/fetcher"
 	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
 
@@ -41,9 +42,6 @@ import (
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 var (
@@ -247,37 +245,17 @@ func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
 	if len(o.Infos) == 0 {
 		return nil
 	}
+	cl := util.BaseClient()
 
 	switch o.Infos[0].Object.(type) {
 	case *appsv1alpha1.CloneSet:
 		var allErrs []error
 		transformed := false
 
-		cfg, err := f.ToRESTConfig()
-		if err != nil {
-			return err
-		}
-
-		schemeGet := api.GetScheme()
-		mapper, err := apiutil.NewDiscoveryRESTMapper(cfg)
-
-		if err != nil {
-			return err
-		}
-
-		ctrl := &control{}
-
-		if ctrl.client, err = client.New(cfg, client.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
-			return err
-		}
-
-		if ctrl.cache, err = cache.New(cfg, cache.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
-			return err
-		}
-
-		res := &appsv1alpha1.CloneSet{}
-		if err := ctrl.client.Get(context.TODO(), types.NamespacedName{Namespace: o.Infos[0].Namespace, Name: o.Infos[0].Name}, res); err != nil {
-			return fmt.Errorf("failed to get %v of %v: %v", o.Infos[0].Namespace, o.Infos[0].Name, err)
+		res, found, err := fetcher.GetCloneSetInCache(o.Infos[0].Namespace, o.Infos[0].Name, cl.Reader)
+		if err != nil || !found {
+			klog.Error(err)
+			return fmt.Errorf("failed to retrieve CloneSet %s: %s", o.Infos[0].Name, err.Error())
 		}
 
 		containers, _ := selectContainers(res.Spec.Template.Spec.Containers, o.ContainerSelector)
@@ -337,12 +315,10 @@ func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
 		}
 
 		if !o.Local {
-			if err := ctrl.client.Update(context.TODO(), res); err != nil {
+			if err := cl.Client.Update(context.TODO(), res); err != nil {
 				return err
 			}
-			fmt.Fprintf(o.Out, "%s resource requirements updated\n", o.Infos[0].ObjectName())
 		}
-
 
 		if err := o.PrintObj(res, o.Out); err != nil {
 			return errors.New(err.Error())
@@ -353,31 +329,10 @@ func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
 		var allErrs []error
 		transformed := false
 
-		cfg, err := f.ToRESTConfig()
-		if err != nil {
-			return err
-		}
-
-		schemeGet := api.GetScheme()
-		mapper, err := apiutil.NewDiscoveryRESTMapper(cfg)
-
-		if err != nil {
-			return err
-		}
-
-		ctrl := &control{}
-
-		if ctrl.client, err = client.New(cfg, client.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
-			return err
-		}
-
-		if ctrl.cache, err = cache.New(cfg, cache.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
-			return err
-		}
-
-		res := &appsv1beta1.StatefulSet{}
-		if err := ctrl.client.Get(context.TODO(), types.NamespacedName{Namespace: o.Infos[0].Namespace, Name: o.Infos[0].Name}, res); err != nil {
-			return fmt.Errorf("failed to get %v of %v: %v", o.Infos[0].Namespace, o.Infos[0].Name, err)
+		res, found, err := fetcher.GetAdvancedStsInCache(o.Infos[0].Namespace, o.Infos[0].Name, cl.Reader)
+		if err != nil || !found {
+			klog.Error(err)
+			return fmt.Errorf("failed to retrieve CloneSet %s: %s", o.Infos[0].Name, err.Error())
 		}
 
 		containers, _ := selectContainers(res.Spec.Template.Spec.Containers, o.ContainerSelector)
@@ -437,10 +392,9 @@ func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
 		}
 
 		if !o.Local {
-			if err := ctrl.client.Update(context.TODO(), res); err != nil {
+			if err := cl.Client.Update(context.TODO(), res); err != nil {
 				return err
 			}
-			fmt.Fprintf(o.Out, "%s resource requirements updated\n", o.Infos[0].ObjectName())
 		}
 
 		if err := o.PrintObj(res, o.Out); err != nil {

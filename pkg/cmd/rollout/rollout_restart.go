@@ -17,11 +17,17 @@ limitations under the License.
 package rollout
 
 import (
+	"context"
 	"fmt"
 
+	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
+	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
 	internalapi "github.com/openkruise/kruise-tools/pkg/api"
+	"github.com/openkruise/kruise-tools/pkg/cmd/util"
+	"github.com/openkruise/kruise-tools/pkg/fetcher"
 	internalpolymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
+	"k8s.io/klog"
 
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -155,39 +161,85 @@ func (o RestartOptions) RunRestart() error {
 		// aggregation of errors.
 		allErrs = append(allErrs, err)
 	}
+	cl := util.BaseClient()
 
-	for _, patch := range set.CalculatePatches(infos, scheme.DefaultJSONEncoder(), set.PatchFn(o.Restarter)) {
-		info := patch.Info
+	switch infos[0].Object.(type) {
+	case *kruiseappsv1alpha1.CloneSet:
 
-		if patch.Err != nil {
-			resourceString := info.Mapping.Resource.Resource
-			if len(info.Mapping.Resource.Group) > 0 {
-				resourceString = resourceString + "." + info.Mapping.Resource.Group
-			}
-			allErrs = append(allErrs, fmt.Errorf("error: %s %q %v", resourceString, info.Name, patch.Err))
-			continue
+		res, found, err := fetcher.GetCloneSetInCache(infos[0].Namespace, infos[0].Name, cl.Reader)
+		if err != nil || !found {
+			klog.Error(err)
+			return fmt.Errorf("failed to retrieve CloneSet %s: %s", infos[0].Name, err.Error())
 		}
+		internalpolymorphichelpers.UpdateResourceEnv(res)
 
-		if string(patch.Patch) == "{}" || len(patch.Patch) == 0 {
-			allErrs = append(allErrs, fmt.Errorf("failed to create patch for %v: empty patch", info.Name))
+		if err := cl.Client.Update(context.TODO(), res); err != nil {
+			return err
 		}
-
-		obj, err := resource.NewHelper(info.Client, info.Mapping).Patch(info.Namespace, info.Name, types.MergePatchType, patch.Patch, nil)
-		if err != nil {
-			allErrs = append(allErrs, fmt.Errorf("failed to patch: %v", err))
-			continue
-		}
-
-		info.Refresh(obj, true)
 		printer, err := o.ToPrinter("restarted")
 		if err != nil {
 			allErrs = append(allErrs, err)
-			continue
 		}
-		if err = printer.PrintObj(info.Object, o.Out); err != nil {
+		if err = printer.PrintObj(infos[0].Object, o.Out); err != nil {
 			allErrs = append(allErrs, err)
 		}
+		return utilerrors.NewAggregate(allErrs)
+
+	case *kruiseappsv1beta1.StatefulSet:
+		res, found, err := fetcher.GetAdvancedStsInCache(infos[0].Namespace, infos[0].Name, cl.Reader)
+		if err != nil || !found {
+			klog.Error(err)
+			return fmt.Errorf("failed to retrieve CloneSet %s: %s", infos[0].Name, err.Error())
+		}
+		internalpolymorphichelpers.UpdateResourceEnv(res)
+
+		if err := cl.Client.Update(context.TODO(), res); err != nil {
+			return err
+		}
+		printer, err := o.ToPrinter("restarted")
+		if err != nil {
+			allErrs = append(allErrs, err)
+		}
+		if err = printer.PrintObj(infos[0].Object, o.Out); err != nil {
+			allErrs = append(allErrs, err)
+		}
+		return utilerrors.NewAggregate(allErrs)
+
+	default:
+		for _, patch := range set.CalculatePatches(infos, scheme.DefaultJSONEncoder(), set.PatchFn(o.Restarter)) {
+			info := patch.Info
+			if patch.Err != nil {
+				resourceString := info.Mapping.Resource.Resource
+				if len(info.Mapping.Resource.Group) > 0 {
+					resourceString = resourceString + "." + info.Mapping.Resource.Group
+				}
+				allErrs = append(allErrs, fmt.Errorf("error: %s %q %v", resourceString, info.Name, patch.Err))
+				continue
+			}
+
+			if string(patch.Patch) == "{}" || len(patch.Patch) == 0 {
+				allErrs = append(allErrs, fmt.Errorf("failed to create patch for %v: empty patch", info.Name))
+			}
+
+			obj, err := resource.NewHelper(info.Client, info.Mapping).Patch(info.Namespace, info.Name, types.MergePatchType, patch.Patch, nil)
+			if err != nil {
+				allErrs = append(allErrs, fmt.Errorf("failed to patch: %v", err))
+				continue
+			}
+
+			info.Refresh(obj, true)
+			printer, err := o.ToPrinter("restarted")
+			if err != nil {
+				allErrs = append(allErrs, err)
+				continue
+			}
+			if err = printer.PrintObj(info.Object, o.Out); err != nil {
+				allErrs = append(allErrs, err)
+			}
+		}
+
+		return utilerrors.NewAggregate(allErrs)
+
 	}
 
-	return utilerrors.NewAggregate(allErrs)
 }

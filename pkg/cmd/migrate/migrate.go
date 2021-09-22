@@ -59,13 +59,13 @@ func NewCmdMigrate(f cmdutil.Factory, ioStreams genericclioptions.IOStreams) *co
 		Long:                  "Migrate from K8s original workloads to Kruise workloads",
 		Example: `
 	# Create an empty CloneSet from an existing Deployment.
-	kruise migrate CloneSet --from Deployment -n default --dst-name deployment-name --create
+	kubectl-kruise migrate CloneSet --from Deployment -n default --dst-name deployment-name --create
 
 	# Create a same replicas CloneSet from an existing Deployment.
-	kruise migrate CloneSet --from Deployment -n default --dst-name deployment-name --create --copy
+	kubectl-kruise migrate CloneSet --from Deployment -n default --dst-name deployment-name --create --copy
 
 	# Migrate replicas from an existing Deployment to an existing CloneSet.
-	kruise migrate CloneSet --from Deployment -n default --src-name cloneset-name --dst-name deployment-name --replicas 10 --max-surge=2
+	kubectl-kruise migrate CloneSet --from Deployment -n default --src-name cloneset-name --dst-name deployment-name --replicas 10 --max-surge=2
 `,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(o.Complete(f, cmd, args))
@@ -112,7 +112,7 @@ func (o *migrateOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []
 	}
 
 	switch args[0] {
-	case "CloneSet", "cloneset":
+	case "CloneSet", "cloneset", "clone":
 		o.To = "CloneSet"
 		o.DstRef = api.NewCloneSetRef(namespace, o.DstName)
 	default:
