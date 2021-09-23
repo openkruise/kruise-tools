@@ -131,21 +131,19 @@ $ kubectl-kruise migrate --help
    * [x]  undo
    * [x] history
    * [x] status
-   * [ ] pause
-   * [ ] resume
-   * [ ] restart
+   * [x] restart
    
 #### kubectl kruise set SUBCOMMAND [options] for CloneSet
-   * [ ] kubectl kruise set image cloneset/abc
-   * [ ] kubectl kruise set env cloneset/abc
-   * [ ] kubectl kruise set serviceaccount cloneset/abc
-   * [ ] kubectl kruise set resources cloneset/abc
+   * [x] kubectl kruise set image cloneset/abc
+   * [x] kubectl kruise set env cloneset/abc
+   * [x] kubectl kruise set serviceaccount cloneset/abc
+   * [x] kubectl kruise set resources cloneset/abc
    
 #### kubectl kruise set SUBCOMMAND [options] for Advanced StatefulSet
-   * [ ] kubectl kruise set image asts/abc
-   * [ ] kubectl kruise set env asts/abc
-   * [ ] kubectl kruise set serviceaccount asts/abc
-   * [ ] kubectl kruise set resources asts/abc
+   * [x] kubectl kruise set image asts/abc
+   * [x] kubectl kruise set env asts/abc
+   * [x] kubectl kruise set serviceaccount asts/abc
+   * [x] kubectl kruise set resources asts/abc
    
 #### kubectl kruise autoscale SUBCOMMAND [options]
    * [ ] kubectl kruise autoscale 

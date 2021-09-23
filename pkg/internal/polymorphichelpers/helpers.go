@@ -22,6 +22,8 @@ import (
 	"sort"
 	"time"
 
+	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
+	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -31,9 +33,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/watch"
 	coreclient "k8s.io/client-go/kubernetes/typed/core/v1"
 	watchtools "k8s.io/client-go/tools/watch"
+)
+
+const (
+	RestartedEnv = "RESTARTED_AT"
 )
 
 // GetFirstPod returns a pod matching the namespace and label selector
@@ -188,4 +195,62 @@ func SelectorsForObject(object runtime.Object) (namespace string, selector label
 	}
 
 	return namespace, selector, nil
+}
+
+func findEnv(env []corev1.EnvVar, name string) (corev1.EnvVar, bool) {
+	for _, e := range env {
+		if e.Name == name {
+			return e, true
+		}
+	}
+	return corev1.EnvVar{}, false
+}
+
+func updateEnv(existing []corev1.EnvVar, env []corev1.EnvVar, remove []string) []corev1.EnvVar {
+	var out []corev1.EnvVar
+	covered := sets.NewString(remove...)
+	for _, e := range existing {
+		if covered.Has(e.Name) {
+			continue
+		}
+		newer, ok := findEnv(env, e.Name)
+		if ok {
+			covered.Insert(e.Name)
+			out = append(out, newer)
+			continue
+		}
+		out = append(out, e)
+	}
+	for _, e := range env {
+		if covered.Has(e.Name) {
+			continue
+		}
+		covered.Insert(e.Name)
+		out = append(out, e)
+	}
+	return out
+}
+
+func UpdateResourceEnv(object runtime.Object) {
+	var addingEnvs []corev1.EnvVar
+	var restartEnv = corev1.EnvVar{
+		Name:  RestartedEnv,
+		Value: time.Now().Format(time.RFC3339),
+	}
+	addingEnvs = append(addingEnvs, restartEnv)
+
+	switch obj := object.(type) {
+	case *kruiseappsv1alpha1.CloneSet:
+		for i, _ := range obj.Spec.Template.Spec.Containers {
+			tmp := &obj.Spec.Template.Spec.Containers[i]
+			tmp.Env = updateEnv(tmp.Env, addingEnvs, []string{})
+		}
+
+	case *kruiseappsv1beta1.StatefulSet:
+		for i, _ := range obj.Spec.Template.Spec.Containers {
+			tmp := &obj.Spec.Template.Spec.Containers[i]
+			tmp.Env = updateEnv(tmp.Env, addingEnvs, []string{})
+		}
+	}
+
 }
