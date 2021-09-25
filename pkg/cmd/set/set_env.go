@@ -163,7 +163,7 @@ func NewCmdEnv(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Co
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(o.Complete(f, cmd, args))
 			cmdutil.CheckErr(o.Validate())
-			cmdutil.CheckErr(o.RunEnv(f))
+			cmdutil.CheckErr(o.RunEnv())
 		},
 	}
 	usage := "the resource to update the env"
@@ -278,7 +278,7 @@ func (o *EnvOptions) Validate() error {
 }
 
 // RunEnv contains all the necessary functionality for the OpenShift cli env command
-func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
+func (o *EnvOptions) RunEnv() error {
 	env, remove, err := envutil.ParseEnv(append(o.EnvParams, o.envArgs...), o.In)
 
 	if err != nil {
