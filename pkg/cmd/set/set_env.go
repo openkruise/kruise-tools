@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"k8s.io/client-go/rest"
 	"regexp"
 	"sort"
 	"strings"
@@ -27,8 +28,6 @@ import (
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
 	"github.com/openkruise/kruise-tools/pkg/api"
-	"github.com/openkruise/kruise-tools/pkg/cmd/util"
-	"github.com/openkruise/kruise-tools/pkg/fetcher"
 	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
 
@@ -41,11 +40,13 @@ import (
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog"
 	envutil "k8s.io/kubectl/pkg/cmd/set/env"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/templates"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 var (
@@ -69,7 +70,7 @@ var (
 		` + envResources)
 
 	envExample = templates.Examples(`
-      # Update cloneset 'sample' with a new environment variable
+          # Update cloneset 'sample' with a new environment variable
 	  kubectl-kruise set env cloneset/sample STORAGE_DIR=/local
 
 	  # List the environment variables defined on a cloneset 'sample'
@@ -90,8 +91,8 @@ var (
 	  # Import environment from a config map with a prefix
 	  kubectl-kruise set env --from=configmap/myconfigmap --prefix=MYSQL_ cloneset/sample
 
-      # Import specific keys from a config map
-      kubectl-kruise set env --keys=my-example-key --from=configmap/myconfigmap cloneset/sample
+          # Import specific keys from a config map
+          kubectl-kruise set env --keys=my-example-key --from=configmap/myconfigmap cloneset/sample
 
 	  # Remove the environment variable ENV from container 'c1' in all deployment configs
 	  kubectl-kruise set env clonesets --all --containers="c1" ENV-
@@ -134,8 +135,14 @@ type EnvOptions struct {
 	enforceNamespace       bool
 	clientset              *kubernetes.Clientset
 	resRef                 api.ResourceRef
+	cfg					   *rest.Config
 
 	genericclioptions.IOStreams
+}
+
+type control struct {
+	client client.Client
+	cache  cache.Cache
 }
 
 // NewEnvOptions returns an EnvOptions indicating all containers in the selected
@@ -163,7 +170,7 @@ func NewCmdEnv(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Co
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(o.Complete(f, cmd, args))
 			cmdutil.CheckErr(o.Validate())
-			cmdutil.CheckErr(o.RunEnv(f))
+			cmdutil.CheckErr(o.RunEnv())
 		},
 	}
 	usage := "the resource to update the env"
@@ -256,7 +263,10 @@ func (o *EnvOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []stri
 		return err
 	}
 	o.builder = f.NewBuilder
-
+	o.cfg, err = f.ToRESTConfig()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -278,7 +288,7 @@ func (o *EnvOptions) Validate() error {
 }
 
 // RunEnv contains all the necessary functionality for the OpenShift cli env command
-func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
+func (o *EnvOptions) RunEnv() error {
 	env, remove, err := envutil.ParseEnv(append(o.EnvParams, o.envArgs...), o.In)
 
 	if err != nil {
@@ -372,147 +382,34 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 		return err
 	}
 
-	if len(infos) == 0 {
+	if len(infos) == 0{
 		return nil
 	}
 
-	cl := util.BaseClient()
+	cfg := o.cfg
+
+	schemeGet := api.GetScheme()
+	mapper, err := apiutil.NewDiscoveryRESTMapper(cfg)
+
+	if err != nil {
+		return err
+	}
+
+	ctrl := &control{}
+
+	if ctrl.client, err = client.New(cfg, client.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
+		return err
+	}
+
+	if ctrl.cache, err = cache.New(cfg, cache.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
+		return err
+	}
 
 	switch infos[0].Object.(type) {
 	case *kruiseappsv1alpha1.CloneSet:
+		res := &kruiseappsv1alpha1.CloneSet{}
 
-		res, found, err := fetcher.GetCloneSetInCache(o.namespace, infos[0].Name, cl.Reader)
-		if err != nil || !found {
-			klog.Error(err)
-			return fmt.Errorf("failed to retrieve CloneSet %s: %s", infos[0].Name, err.Error())
-		}
-
-		resolutionErrorsEncountered := false
-		containers, _ := selectContainers(res.Spec.Template.Spec.Containers, o.ContainerSelector)
-
-		objName, err := meta.NewAccessor().Name(res)
-		if err != nil {
-			return err
-		}
-
-		gvks, _, err := scheme.Scheme.ObjectKinds(res)
-		if err != nil {
-			return err
-		}
-
-		objKind := res.GetObjectKind().GroupVersionKind().Kind
-		if len(objKind) == 0 {
-			for _, gvk := range gvks {
-				if len(gvk.Kind) == 0 {
-					continue
-				}
-				if len(gvk.Version) == 0 || gvk.Version == runtime.APIVersionInternal {
-					continue
-				}
-
-				objKind = gvk.Kind
-				break
-			}
-		}
-
-		if len(containers) == 0 {
-			if gvks, _, err := scheme.Scheme.ObjectKinds(res); err == nil {
-				objKind := res.GetObjectKind().GroupVersionKind().Kind
-				if len(objKind) == 0 {
-					for _, gvk := range gvks {
-						if len(gvk.Kind) == 0 {
-							continue
-						}
-						if len(gvk.Version) == 0 || gvk.Version == runtime.APIVersionInternal {
-							continue
-						}
-
-						objKind = gvk.Kind
-						break
-					}
-				}
-
-				fmt.Fprintf(o.ErrOut, "warning: %s/%s does not have any containers matching %q\n", objKind, objName, o.ContainerSelector)
-			}
-			return nil
-		}
-
-		for _, c := range containers {
-			if !o.Overwrite {
-				if err := validateNoOverwrites(c.Env, env); err != nil {
-					return err
-				}
-			}
-
-			c.Env = updateEnv(c.Env, env, remove)
-			if o.List {
-				resolveErrors := map[string][]string{}
-				store := envutil.NewResourceStore()
-
-				fmt.Fprintf(o.Out, "# %s %s, container %s\n", objKind, objName, c.Name)
-				for _, env := range c.Env {
-					// Print the simple value
-					if env.ValueFrom == nil {
-						fmt.Fprintf(o.Out, "%s=%s\n", env.Name, env.Value)
-						continue
-					}
-
-					// Print the reference version
-					if !o.Resolve {
-						fmt.Fprintf(o.Out, "# %s from %s\n", env.Name, envutil.GetEnvVarRefString(env.ValueFrom))
-						continue
-					}
-
-					value, err := envutil.GetEnvVarRefValue(o.clientset, o.namespace, store, env.ValueFrom, res, c)
-					// Print the resolved value
-					if err == nil {
-						fmt.Fprintf(o.Out, "%s=%s\n", env.Name, value)
-						continue
-					}
-
-					// Print the reference version and save the resolve error
-					fmt.Fprintf(o.Out, "# %s from %s\n", env.Name, envutil.GetEnvVarRefString(env.ValueFrom))
-					errString := err.Error()
-					resolveErrors[errString] = append(resolveErrors[errString], env.Name)
-					resolutionErrorsEncountered = true
-				}
-
-				// Print any resolution errors
-				var errs []string
-				for err, vars := range resolveErrors {
-					sort.Strings(vars)
-					errs = append(errs, fmt.Sprintf("error retrieving reference for %s: %v", strings.Join(vars, ", "), err))
-				}
-				sort.Strings(errs)
-				for _, err := range errs {
-					_, _ = fmt.Fprintln(o.ErrOut, err)
-				}
-			}
-		}
-
-		if !o.Local {
-			if err := cl.Client.Update(context.TODO(), res); err != nil {
-				return err
-			}
-		}
-
-		if resolutionErrorsEncountered {
-			return errors.New("failed to retrieve valueFrom references")
-		}
-
-		if o.List {
-			return nil
-		}
-
-		if err := o.PrintObj(res, o.Out); err != nil {
-			return errors.New(err.Error())
-		}
-
-		return nil
-	case *kruiseappsv1beta1.StatefulSet:
-		res, found, err := fetcher.GetAdvancedStsInCache(o.namespace, infos[0].Name, cl.Reader)
-		if err != nil || !found {
-			klog.Error(err)
+		if err := ctrl.client.Get(context.TODO(), types.NamespacedName{Namespace: o.namespace, Name: infos[0].Name}, res); err != nil {
 			return fmt.Errorf("failed to get %v of %v: %v", o.namespace, infos[0].Name, err)
 		}
 
@@ -619,10 +516,140 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 			}
 		}
 
-		if !o.Local {
-			if err := cl.Client.Update(context.TODO(), res); err != nil {
+		if !o.Local && !o.List{
+			if err := ctrl.client.Update(context.TODO(), res); err != nil {
 				return err
 			}
+		}
+
+		if resolutionErrorsEncountered {
+			return errors.New("failed to retrieve valueFrom references")
+		}
+
+		if o.List {
+			return nil
+		}
+
+		if err := o.PrintObj(res, o.Out); err != nil {
+			return errors.New(err.Error())
+		}
+
+		return nil
+	case *kruiseappsv1beta1.StatefulSet:
+		res := &kruiseappsv1beta1.StatefulSet{}
+
+		if err := ctrl.client.Get(context.TODO(), types.NamespacedName{Namespace: o.namespace, Name: infos[0].Name}, res); err != nil {
+			return fmt.Errorf("failed to get %v of %v: %v", o.namespace, infos[0].Name, err)
+		}
+
+		resolutionErrorsEncountered := false
+		containers, _ := selectContainers(res.Spec.Template.Spec.Containers, o.ContainerSelector)
+
+		objName, err := meta.NewAccessor().Name(res)
+		if err != nil {
+			return err
+		}
+
+		gvks, _, err := scheme.Scheme.ObjectKinds(res)
+		if err != nil {
+			return err
+		}
+
+		objKind := res.GetObjectKind().GroupVersionKind().Kind
+		if len(objKind) == 0 {
+			for _, gvk := range gvks {
+				if len(gvk.Kind) == 0 {
+					continue
+				}
+				if len(gvk.Version) == 0 || gvk.Version == runtime.APIVersionInternal {
+					continue
+				}
+
+				objKind = gvk.Kind
+				break
+			}
+		}
+
+		if len(containers) == 0 {
+			if gvks, _, err := scheme.Scheme.ObjectKinds(res); err == nil {
+				objKind := res.GetObjectKind().GroupVersionKind().Kind
+				if len(objKind) == 0 {
+					for _, gvk := range gvks {
+						if len(gvk.Kind) == 0 {
+							continue
+						}
+						if len(gvk.Version) == 0 || gvk.Version == runtime.APIVersionInternal {
+							continue
+						}
+
+						objKind = gvk.Kind
+						break
+					}
+				}
+
+				fmt.Fprintf(o.ErrOut, "warning: %s/%s does not have any containers matching %q\n", objKind, objName, o.ContainerSelector)
+			}
+			return nil
+		}
+
+		for _, c := range containers {
+			if !o.Overwrite {
+				if err := validateNoOverwrites(c.Env, env); err != nil {
+					return err
+				}
+			}
+
+			c.Env = updateEnv(c.Env, env, remove)
+			if o.List {
+				resolveErrors := map[string][]string{}
+				store := envutil.NewResourceStore()
+
+				fmt.Fprintf(o.Out, "# %s %s, container %s\n", objKind, objName, c.Name)
+				for _, env := range c.Env {
+					// Print the simple value
+					if env.ValueFrom == nil {
+						fmt.Fprintf(o.Out, "%s=%s\n", env.Name, env.Value)
+						continue
+					}
+
+					// Print the reference version
+					if !o.Resolve {
+						fmt.Fprintf(o.Out, "# %s from %s\n", env.Name, envutil.GetEnvVarRefString(env.ValueFrom))
+						continue
+					}
+
+					value, err := envutil.GetEnvVarRefValue(o.clientset, o.namespace, store, env.ValueFrom, res, c)
+					// Print the resolved value
+					if err == nil {
+						fmt.Fprintf(o.Out, "%s=%s\n", env.Name, value)
+						continue
+					}
+
+					// Print the reference version and save the resolve error
+					fmt.Fprintf(o.Out, "# %s from %s\n", env.Name, envutil.GetEnvVarRefString(env.ValueFrom))
+					errString := err.Error()
+					resolveErrors[errString] = append(resolveErrors[errString], env.Name)
+					resolutionErrorsEncountered = true
+				}
+
+				// Print any resolution errors
+				var errs []string
+				for err, vars := range resolveErrors {
+					sort.Strings(vars)
+					errs = append(errs, fmt.Sprintf("error retrieving reference for %s: %v", strings.Join(vars, ", "), err))
+				}
+				sort.Strings(errs)
+				for _, err := range errs {
+					_, _ = fmt.Fprintln(o.ErrOut, err)
+				}
+			}
+		}
+
+		if !o.Local  && !o.List{
+			if err := ctrl.client.Update(context.TODO(), res); err != nil {
+				return err
+			}
+			fmt.Fprintf(o.Out, "%s env updated\n", infos[0].ObjectName())
 		}
 
 		if resolutionErrorsEncountered {

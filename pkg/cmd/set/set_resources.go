@@ -20,11 +20,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"k8s.io/client-go/rest"
 
 	appsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	appsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
-	"github.com/openkruise/kruise-tools/pkg/cmd/util"
-	"github.com/openkruise/kruise-tools/pkg/fetcher"
+	"github.com/openkruise/kruise-tools/pkg/api"
 	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
 
@@ -42,6 +42,9 @@ import (
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 var (
@@ -93,6 +96,7 @@ type SetResourcesOptions struct {
 	UpdatePodSpecForObject polymorphichelpers.UpdatePodSpecForObjectFunc
 	Resources              []string
 	DryRunVerifier         *resource.DryRunVerifier
+	cfg					   *rest.Config
 
 	genericclioptions.IOStreams
 }
@@ -125,7 +129,7 @@ func NewCmdResources(f cmdutil.Factory, streams genericclioptions.IOStreams) *co
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(o.Complete(f, cmd, args))
 			cmdutil.CheckErr(o.Validate())
-			cmdutil.CheckErr(o.Run(f))
+			cmdutil.CheckErr(o.Run())
 		},
 	}
 
@@ -215,6 +219,10 @@ func (o *SetResourcesOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, ar
 	if err != nil {
 		return err
 	}
+	o.cfg, err = f.ToRESTConfig()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -240,22 +248,39 @@ func (o *SetResourcesOptions) Validate() error {
 }
 
 // Run performs the execution of 'set resources' sub command
-func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
+func (o *SetResourcesOptions) Run() error {
 
 	if len(o.Infos) == 0 {
 		return nil
 	}
-	cl := util.BaseClient()
+
+	var allErrs []error
+	transformed := false
+
+	cfg := o.cfg
+
+	schemeGet := api.GetScheme()
+	mapper, err := apiutil.NewDiscoveryRESTMapper(cfg)
+
+	if err != nil {
+		return err
+	}
+
+	ctrl := &control{}
+
+	if ctrl.client, err = client.New(cfg, client.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
+		return err
+	}
+
+	if ctrl.cache, err = cache.New(cfg, cache.Options{Scheme: schemeGet, Mapper: mapper}); err != nil {
+		return err
+	}
 
 	switch o.Infos[0].Object.(type) {
 	case *appsv1alpha1.CloneSet:
-		var allErrs []error
-		transformed := false
-
-		res, found, err := fetcher.GetCloneSetInCache(o.Infos[0].Namespace, o.Infos[0].Name, cl.Reader)
-		if err != nil || !found {
-			klog.Error(err)
-			return fmt.Errorf("failed to retrieve CloneSet %s: %s", o.Infos[0].Name, err.Error())
+		res := &appsv1alpha1.CloneSet{}
+		if err := ctrl.client.Get(context.TODO(), types.NamespacedName{Namespace: o.Infos[0].Namespace, Name: o.Infos[0].Name}, res); err != nil {
+			return fmt.Errorf("failed to get %v of %v: %v", o.Infos[0].Namespace, o.Infos[0].Name, err)
 		}
 
 		containers, _ := selectContainers(res.Spec.Template.Spec.Containers, o.ContainerSelector)
@@ -315,10 +340,11 @@ func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
 		}
 
 		if !o.Local {
-			if err := cl.Client.Update(context.TODO(), res); err != nil {
+			if err := ctrl.client.Update(context.TODO(), res); err != nil {
 				return err
 			}
 		}
+
 
 		if err := o.PrintObj(res, o.Out); err != nil {
 			return errors.New(err.Error())
@@ -326,13 +352,9 @@ func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
 
 		return utilerrors.NewAggregate(allErrs)
 	case *appsv1beta1.StatefulSet:
-		var allErrs []error
-		transformed := false
-
-		res, found, err := fetcher.GetAdvancedStsInCache(o.Infos[0].Namespace, o.Infos[0].Name, cl.Reader)
-		if err != nil || !found {
-			klog.Error(err)
-			return fmt.Errorf("failed to retrieve CloneSet %s: %s", o.Infos[0].Name, err.Error())
+		res := &appsv1beta1.StatefulSet{}
+		if err := ctrl.client.Get(context.TODO(), types.NamespacedName{Namespace: o.Infos[0].Namespace, Name: o.Infos[0].Name}, res); err != nil {
+			return fmt.Errorf("failed to get %v of %v: %v", o.Infos[0].Namespace, o.Infos[0].Name, err)
 		}
 
 		containers, _ := selectContainers(res.Spec.Template.Spec.Containers, o.ContainerSelector)
@@ -391,8 +413,8 @@ func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
 			klog.V(4).Infof("error recording current command: %v", err)
 		}
 
-		if !o.Local {
-			if err := cl.Client.Update(context.TODO(), res); err != nil {
+		if !o.Local{
+			if err := ctrl.client.Update(context.TODO(), res); err != nil {
 				return err
 			}
 		}

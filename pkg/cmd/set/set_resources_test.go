@@ -23,7 +23,10 @@ import (
 	"strings"
 	"testing"
 
+	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
+	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
 	"github.com/stretchr/testify/assert"
+	
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -166,6 +169,48 @@ func TestSetResourcesRemote(t *testing.T) {
 			groupVersion: extensionsv1beta1.SchemeGroupVersion,
 			path:         "/namespaces/test/replicasets/nginx",
 			args:         []string{"replicaset", "nginx"},
+		},
+		{
+			name: "test v1alpha1 cloneset",
+			object: &kruiseappsv1alpha1.CloneSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: kruiseappsv1alpha1.CloneSetSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: kruiseappsv1alpha1.SchemeGroupVersion,
+			path:         "/namespaces/test/clonesets/nginx",
+			args:         []string{"cloneset", "nginx", "env=prod"},
+		},
+		{
+			name: "test v1beta1 advanced statefulset",
+			object: &kruiseappsv1beta1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: kruiseappsv1beta1.StatefulSetSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: kruiseappsv1beta1.SchemeGroupVersion,
+			path:         "/namespaces/test/statefulsets/nginx",
+			args:         []string{"statefulsets", "nginx", "env=prod"},
 		},
 		{
 			name: "set image appsv1beta2 ReplicaSet",
