@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  release:
+    types:
+      - created
+
+env:
+  # Common versions
+  GO_VERSION: '1.16'
+
+jobs:
+  build_and_upload:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Build
+        run: |
+          mkdir -p ./bin
+          LDFLAGS=$(./version.sh)
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o bin/kubectl-kruise_linux_amd64 cmd/plugin/main.go
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags "${LDFLAGS}" -o bin/kubectl-kruise_linux_arm64 cmd/plugin/main.go
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o bin/kubectl-kruise_darwin_amd64 cmd/plugin/main.go
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags "${LDFLAGS}" -o bin/kubectl-kruise_darwin_arm64 cmd/plugin/main.go
+      - name: Upload linux/amd64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./bin/kubectl-kruise_linux_amd64
+          asset_name: kubectl-kruise_linux_amd64
+          asset_content_type: binary/octet-stream
+      - name: Upload linux/arm64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./bin/kubectl-kruise_linux_arm64
+          asset_name: kubectl-kruise_linux_arm64
+          asset_content_type: binary/octet-stream
+      - name: Upload darwin/amd64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./bin/kubectl-kruise_darwin_amd64
+          asset_name: kubectl-kruise_darwin_amd64
+          asset_content_type: binary/octet-stream
+      - name: Upload darwin/arm64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./bin/kubectl-kruise_darwin_arm64
+          asset_name: kubectl-kruise_darwin_arm64
+          asset_content_type: binary/octet-stream
