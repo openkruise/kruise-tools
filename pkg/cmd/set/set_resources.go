@@ -125,7 +125,7 @@ func NewCmdResources(f cmdutil.Factory, streams genericclioptions.IOStreams) *co
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(o.Complete(f, cmd, args))
 			cmdutil.CheckErr(o.Validate())
-			cmdutil.CheckErr(o.Run(f))
+			cmdutil.CheckErr(o.Run())
 		},
 	}
 
@@ -240,7 +240,7 @@ func (o *SetResourcesOptions) Validate() error {
 }
 
 // Run performs the execution of 'set resources' sub command
-func (o *SetResourcesOptions) Run(f cmdutil.Factory) error {
+func (o *SetResourcesOptions) Run() error {
 
 	if len(o.Infos) == 0 {
 		return nil
