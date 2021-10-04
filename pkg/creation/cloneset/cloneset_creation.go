@@ -65,7 +65,7 @@ func (c *control) Create(src api.ResourceRef, dst api.ResourceRef, opts creation
 		return err
 	}
 
-	dstCloneSet := convertion.DeploymentToCloneSet(srcDeployment)
+	dstCloneSet := convertion.DeploymentToCloneSet(srcDeployment, dst.Name)
 	return c.client.Create(context.TODO(), dstCloneSet)
 }
 

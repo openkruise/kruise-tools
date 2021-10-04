@@ -23,14 +23,14 @@ import (
 )
 
 // Convert Deployment to CloneSet
-func DeploymentToCloneSet(deploy *apps.Deployment) *appsv1alpha1.CloneSet {
+func DeploymentToCloneSet(deploy *apps.Deployment, dstCloneSetName string) *appsv1alpha1.CloneSet {
 	// Deep copy first
 	from := deploy.DeepCopy()
 
 	cs := &appsv1alpha1.CloneSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   from.Namespace,
-			Name:        from.Name,
+			Name:        dstCloneSetName,
 			Labels:      from.Labels,
 			Annotations: from.Annotations,
 			Finalizers:  from.Finalizers,
