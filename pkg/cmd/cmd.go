@@ -18,14 +18,13 @@ package cmd
 
 import (
 	"flag"
-	"github.com/openkruise/kruise-tools/pkg/cmd/migrate"
 	"io"
 	"os"
 
+	"github.com/openkruise/kruise-tools/pkg/cmd/migrate"
 	krollout "github.com/openkruise/kruise-tools/pkg/cmd/rollout"
-	"github.com/spf13/cobra"
-
 	kset "github.com/openkruise/kruise-tools/pkg/cmd/set"
+	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/tools/clientcmd"
 	cliflag "k8s.io/component-base/cli/flag"
@@ -325,7 +324,7 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
       kubectl-kruise controls the OpenKruise manager.
 
       Find more information at:
-            https://openkruise.io/en-us/docs/what_is_openkruise.html`),
+            https://openkruise.io/`),
 		Run: runHelp,
 		// Hook before and after Run initialize and write profiles to disk,
 		// respectively.
@@ -376,18 +375,26 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 
 	groups := templates.CommandGroups{
 		{
-			Message: "Basic Commands:",
-			Commands: []*cobra.Command{
-				kset.NewCmdSet(f, ioStreams),
-			},
-		},
-		{
 			Message: "CloneSet Commands:",
 			Commands: []*cobra.Command{
 				krollout.NewCmdRollout(f, ioStreams),
+				kset.NewCmdSet(f, ioStreams),
+				migrate.NewCmdMigrate(f, ioStreams),
+			},
+		},
+		{
+			Message: "AdvancedStatefulSet Commands:",
+			Commands: []*cobra.Command{
+				krollout.NewCmdRollout(f, ioStreams),
+				kset.NewCmdSet(f, ioStreams),
+			},
+		},
+
+		{
+			Message: "Basic Commands:",
+			Commands: []*cobra.Command{
 				scale.NewCmdScale(f, ioStreams),
 				autoscale.NewCmdAutoscale(f, ioStreams),
-				migrate.NewCmdMigrate(f, ioStreams),
 			},
 		},
 		{

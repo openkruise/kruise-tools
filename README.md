@@ -26,16 +26,23 @@ By now the `rollout` cmd such as `rollout undo`, `rollout status`, `rollout hist
 $kubectl-kruise --help
 kubectl-kruise controls the OpenKruise manager.
 
- Find more information at: https://openkruise.io/en-us/docs/what_is_openkruise.html
+ Find more information at: https://openkruise.io/
 
 Aliases:
 kubectl-kruise, kk
 
 CloneSet Commands:
   rollout       Manage the rollout of a resource
-  scale         Set a new size for a Deployment, ReplicaSet or Replication Controller
-  autoscale     Auto-scale a Deployment, ReplicaSet, or ReplicationController
+  set           Set specific features on objects
   migrate       Migrate from K8s original workloads to Kruise workloads
+
+AdvancedStatefulSet Commands:
+  rollout       Manage the rollout of a resource
+  set           Set specific features on objects
+
+Basic Commands:
+  scale         Set a new size for a CloneSet, Deployment, ReplicaSet or Replication Controller
+  autoscale     Auto-scale a CloneSet, Deployment, ReplicaSet, or ReplicationController
 
 Cluster Management Commands:
   certificate   Modify certificate resources.
@@ -74,7 +81,6 @@ Usage:
 
 Use "kubectl-kruise <command> --help" for more information about a given command.
 Use "kubectl-kruise options" for a list of global command-line options (applies to all commands).
-
 ```
 
 Currently it also supports to migrate Pods from Deployment to CloneSet by `kruise migrate [options]`.
@@ -112,12 +118,17 @@ $ kubectl-kruise migrate --help
         --user string                    The name of the kubeconfig user to use
         --username string                Username for basic authentication to the API server
   
-  Use "kruise [command] --help" for more information about a command.
+  Use "kubectl-kruise [command] --help" for more information about a command.
 ```
 
 ### TODO
 #### kubectl kruise migrate
    * [x] migrate [options]
+
+> kubectl-kruise migrate demo
+```bash
+kubectl kruise migrate CloneSet --from Deployment --src-name deployment-demo --dst-name cloneset-demo --create --copy
+```
    
 #### kubectl kruise rollout for CloneSet workload
    * [x] undo
