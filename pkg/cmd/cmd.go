@@ -23,6 +23,7 @@ import (
 
 	"github.com/openkruise/kruise-tools/pkg/cmd/migrate"
 	krollout "github.com/openkruise/kruise-tools/pkg/cmd/rollout"
+	"github.com/openkruise/kruise-tools/pkg/cmd/scaledown"
 	kset "github.com/openkruise/kruise-tools/pkg/cmd/set"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -387,6 +388,12 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 			Commands: []*cobra.Command{
 				krollout.NewCmdRollout(f, ioStreams),
 				kset.NewCmdSet(f, ioStreams),
+			},
+		},
+		{
+			Message: "Scaledown Commands",
+			Commands: []*cobra.Command{
+				scaledown.NewCmdScaleDown(f, ioStreams),
 			},
 		},
 
