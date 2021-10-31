@@ -143,6 +143,9 @@ kubectl kruise migrate CloneSet --from Deployment --src-name deployment-demo --d
    * [x] history
    * [x] status
    * [x] restart
+
+#### kubectl kruise expose for CloneSet workload
+   * [x] kubectl kruise expose cloneset demo-clone  --port=80 --target-port=8000
    
 #### kubectl kruise set SUBCOMMAND [options] for CloneSet
    * [x] kubectl kruise set image cloneset/abc

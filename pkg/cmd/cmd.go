@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/openkruise/kruise-tools/pkg/cmd/expose"
 	"github.com/openkruise/kruise-tools/pkg/cmd/migrate"
 	krollout "github.com/openkruise/kruise-tools/pkg/cmd/rollout"
 	kset "github.com/openkruise/kruise-tools/pkg/cmd/set"
@@ -35,7 +36,6 @@ import (
 	"k8s.io/kubectl/pkg/cmd/certificates"
 	"k8s.io/kubectl/pkg/cmd/clusterinfo"
 	cmdconfig "k8s.io/kubectl/pkg/cmd/config"
-	"k8s.io/kubectl/pkg/cmd/debug"
 	"k8s.io/kubectl/pkg/cmd/describe"
 	"k8s.io/kubectl/pkg/cmd/diff"
 	"k8s.io/kubectl/pkg/cmd/drain"
@@ -47,6 +47,7 @@ import (
 	"k8s.io/kubectl/pkg/cmd/plugin"
 	"k8s.io/kubectl/pkg/cmd/portforward"
 	"k8s.io/kubectl/pkg/cmd/replace"
+	"k8s.io/kubectl/pkg/cmd/run"
 	"k8s.io/kubectl/pkg/cmd/scale"
 	"k8s.io/kubectl/pkg/cmd/taint"
 	"k8s.io/kubectl/pkg/cmd/top"
@@ -375,6 +376,14 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 
 	groups := templates.CommandGroups{
 		{
+			Message: "Basic Commands (Beginner):",
+			Commands: []*cobra.Command{
+				expose.NewCmdExposeService(f, ioStreams),
+				run.NewCmdRun(f, ioStreams),
+			},
+		},
+
+		{
 			Message: "CloneSet Commands:",
 			Commands: []*cobra.Command{
 				krollout.NewCmdRollout(f, ioStreams),
@@ -417,7 +426,6 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 				attach.NewCmdAttach(f, ioStreams),
 				cmdexec.NewCmdExec(f, ioStreams),
 				portforward.NewCmdPortForward(f, ioStreams),
-				debug.NewCmdDebug(f, ioStreams),
 			},
 		},
 		{

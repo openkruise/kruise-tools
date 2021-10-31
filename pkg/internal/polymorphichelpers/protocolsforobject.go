@@ -1,4 +1,5 @@
 /*
+Copyright 2021 The Kruise Authors.
 Copyright 2018 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +21,7 @@ import (
 	"fmt"
 	"strconv"
 
+	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -54,6 +56,9 @@ func protocolsForObject(object runtime.Object) (map[string]string, error) {
 	case *appsv1.ReplicaSet:
 		return getProtocols(t.Spec.Template.Spec), nil
 	case *appsv1beta2.ReplicaSet:
+		return getProtocols(t.Spec.Template.Spec), nil
+
+	case *kruiseappsv1alpha1.CloneSet:
 		return getProtocols(t.Spec.Template.Spec), nil
 
 	default:
