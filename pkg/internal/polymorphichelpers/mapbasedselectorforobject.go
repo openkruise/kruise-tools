@@ -147,9 +147,9 @@ func mapBasedSelectorForObject(object runtime.Object) (string, error) {
 		}
 		return MakeLabels(t.Spec.Selector.MatchLabels), nil
 	case *kruiseappsv1alpha1.CloneSet:
-		// "apps" deployments must have the selector set.
+		// "kruiseappsv1alpha1" CloneSet must have the selector set.
 		if t.Spec.Selector == nil || len(t.Spec.Selector.MatchLabels) == 0 {
-			return "", fmt.Errorf("invalid deployment: no selectors, therefore cannot be exposed")
+			return "", fmt.Errorf("invalid CloneSet: no selectors, therefore cannot be exposed")
 		}
 		// TODO(madhusudancs): Make this smarter by admitting MatchExpressions with Equals
 		// operator, DoubleEquals operator and In operator with only one element in the set.
