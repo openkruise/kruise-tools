@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
-	kresource "github.com/openkruise/kruise-tools/pkg/resource"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -288,7 +287,7 @@ func (o *SetImageOptions) Run() error {
 		}
 
 		// patch the change
-		actual, err := kresource.
+		actual, err := resource.
 			NewHelper(info.Client, info.Mapping).
 			DryRun(o.DryRunStrategy == cmdutil.DryRunServer).
 			Patch(info.Namespace, info.Name, types.MergePatchType, patch.Patch, nil)

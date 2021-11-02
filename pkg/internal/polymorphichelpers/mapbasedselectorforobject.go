@@ -1,4 +1,5 @@
 /*
+Copyright 2021 The Kruise Authors.
 Copyright 2018 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -137,6 +139,17 @@ func mapBasedSelectorForObject(object runtime.Object) (string, error) {
 		// "apps" replicasets must have the selector set.
 		if t.Spec.Selector == nil || len(t.Spec.Selector.MatchLabels) == 0 {
 			return "", fmt.Errorf("invalid replicaset: no selectors, therefore cannot be exposed")
+		}
+		// TODO(madhusudancs): Make this smarter by admitting MatchExpressions with Equals
+		// operator, DoubleEquals operator and In operator with only one element in the set.
+		if len(t.Spec.Selector.MatchExpressions) > 0 {
+			return "", fmt.Errorf("couldn't convert expressions - \"%+v\" to map-based selector format", t.Spec.Selector.MatchExpressions)
+		}
+		return MakeLabels(t.Spec.Selector.MatchLabels), nil
+	case *kruiseappsv1alpha1.CloneSet:
+		// "kruiseappsv1alpha1" CloneSet must have the selector set.
+		if t.Spec.Selector == nil || len(t.Spec.Selector.MatchLabels) == 0 {
+			return "", fmt.Errorf("invalid CloneSet: no selectors, therefore cannot be exposed")
 		}
 		// TODO(madhusudancs): Make this smarter by admitting MatchExpressions with Equals
 		// operator, DoubleEquals operator and In operator with only one element in the set.
