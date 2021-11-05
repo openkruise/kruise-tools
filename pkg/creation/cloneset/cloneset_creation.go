@@ -22,8 +22,9 @@ import (
 
 	appsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	"github.com/openkruise/kruise-tools/pkg/api"
-	"github.com/openkruise/kruise-tools/pkg/convertion"
+	"github.com/openkruise/kruise-tools/pkg/conversion"
 	"github.com/openkruise/kruise-tools/pkg/creation"
+
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/rest"
@@ -65,7 +66,7 @@ func (c *control) Create(src api.ResourceRef, dst api.ResourceRef, opts creation
 		return err
 	}
 
-	dstCloneSet := convertion.DeploymentToCloneSet(srcDeployment, dst.Name)
+	dstCloneSet := conversion.DeploymentToCloneSet(srcDeployment, dst.Name)
 	return c.client.Create(context.TODO(), dstCloneSet)
 }
 

@@ -18,13 +18,13 @@ package scaledown
 
 import (
 	"fmt"
-	"k8s.io/cli-runtime/pkg/printers"
 
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	internalapi "github.com/openkruise/kruise-tools/pkg/api"
-	"github.com/openkruise/kruise-tools/pkg/cmd/util"
+
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/scheme"
@@ -113,10 +113,9 @@ func (o *ScaleDownOptions) Run(f cmdutil.Factory, cmd *cobra.Command) error {
 		return nil
 	}
 
-	cl := util.BaseClient()
 	switch infos[0].Object.(type) {
 	case *kruiseappsv1alpha1.CloneSet:
-		err = o.ScaleDownCloneSet(f, infos[0].Name, cl.Reader, cl.Client)
+		err = o.ScaleDownCloneSet(infos[0])
 		if err != nil {
 			return err
 		}

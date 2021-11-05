@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package convertion
+package conversion
 
 import (
 	appsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"

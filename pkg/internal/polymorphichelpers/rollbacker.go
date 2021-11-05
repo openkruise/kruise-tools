@@ -17,6 +17,7 @@ limitations under the License.
 package polymorphichelpers
 
 import (
+	kruiseclientsets "github.com/openkruise/kruise-api/client/clientset/versioned"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
@@ -32,6 +33,10 @@ func rollbacker(restClientGetter genericclioptions.RESTClientGetter, mapping *me
 	if err != nil {
 		return nil, err
 	}
+	kruiseExternal, err := kruiseclientsets.NewForConfig(clientConfig)
+	if err != nil {
+		return nil, err
+	}
 
-	return RollbackerFor(mapping.GroupVersionKind.GroupKind(), external)
+	return RollbackerFor(mapping.GroupVersionKind.GroupKind(), external, kruiseExternal)
 }

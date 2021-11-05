@@ -33,6 +33,16 @@ if [[ -n ${GIT_COMMIT-} ]] || GIT_COMMIT=$(git rev-parse "HEAD^{commit}" 2>/dev/
       GIT_VERSION+="-dirty"
     fi
 
+    # Try to match the "git describe" output to a regex to try to extract
+    # the "major" and "minor" versions and whether this is the exact tagged
+    # version or whether the tree is between two tagged versions.
+    if [[ "${GIT_VERSION}" =~ ^v([0-9]+)\.([0-9]+)(\.[0-9]+)?([-].*)?([+].*)?$ ]]; then
+      GIT_MAJOR=${BASH_REMATCH[1]}
+      GIT_MINOR=${BASH_REMATCH[2]}
+      if [[ -n "${BASH_REMATCH[4]}" ]]; then
+        GIT_MINOR+="+"
+      fi
+    fi
 
     # If GIT_VERSION is not a valid Semantic Version, then refuse to build.
     if ! [[ "${GIT_VERSION}" =~ ^v([0-9]+)\.([0-9]+)(\.[0-9]+)?(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
@@ -43,4 +53,22 @@ if [[ -n ${GIT_COMMIT-} ]] || GIT_COMMIT=$(git rev-parse "HEAD^{commit}" 2>/dev/
   fi
 fi
 
-echo "-X 'github.com/github.com/openkruise/kruise-tools/version.gitVersion=${GIT_VERSION}'"
+function add_ldflag() {
+  local key=${1}
+  local val=${2}
+  ldflags+=(
+    "-X 'k8s.io/component-base/version.${key}=${val}'"
+  )
+}
+
+SOURCE_DATE_EPOCH=$(git show -s --format=format:%ct HEAD)
+add_ldflag "buildDate" "$(date ${SOURCE_DATE_EPOCH:+"--date=@${SOURCE_DATE_EPOCH}"} -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+add_ldflag "gitCommit" "${GIT_COMMIT}"
+add_ldflag "gitTreeState" "${GIT_TREE_STATE}"
+add_ldflag "gitVersion" "${GIT_VERSION}"
+add_ldflag "gitMajor" "${GIT_MAJOR}"
+add_ldflag "gitMinor" "${GIT_MINOR}"
+
+# The -ldflags parameter takes a single string, so join the output.
+echo "${ldflags[*]-}"

@@ -17,7 +17,6 @@ limitations under the License.
 package set
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"regexp"
@@ -27,12 +26,10 @@ import (
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
 	"github.com/openkruise/kruise-tools/pkg/api"
-	"github.com/openkruise/kruise-tools/pkg/cmd/util"
-	"github.com/openkruise/kruise-tools/pkg/fetcher"
 	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -41,7 +38,6 @@ import (
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog"
 	envutil "k8s.io/kubectl/pkg/cmd/set/env"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/scheme"
@@ -376,16 +372,16 @@ func (o *EnvOptions) RunEnv() error {
 		return nil
 	}
 
-	cl := util.BaseClient()
-
 	switch infos[0].Object.(type) {
 	case *kruiseappsv1alpha1.CloneSet:
 
-		res, found, err := fetcher.GetCloneSetInCache(o.namespace, infos[0].Name, cl.Reader)
-		if err != nil || !found {
-			klog.Error(err)
-			return fmt.Errorf("failed to retrieve CloneSet %s: %s", infos[0].Name, err.Error())
+		obj, err := resource.
+			NewHelper(infos[0].Client, infos[0].Mapping).
+			Get(o.namespace, infos[0].Name)
+		if err != nil {
+			return err
 		}
+		res := obj.(*kruiseappsv1alpha1.CloneSet)
 
 		resolutionErrorsEncountered := false
 		containers, _ := selectContainers(res.Spec.Template.Spec.Containers, o.ContainerSelector)
@@ -491,8 +487,12 @@ func (o *EnvOptions) RunEnv() error {
 		}
 
 		if !o.Local {
-			if err := cl.Client.Update(context.TODO(), res); err != nil {
-				return err
+			_, err := resource.
+				NewHelper(infos[0].Client, infos[0].Mapping).
+				DryRun(o.dryRunStrategy == cmdutil.DryRunServer).
+				Replace(infos[0].Namespace, infos[0].Name, true, res)
+			if err != nil {
+				return fmt.Errorf("failed to patch env update to pod template: %v", err)
 			}
 		}
 
@@ -510,11 +510,14 @@ func (o *EnvOptions) RunEnv() error {
 
 		return nil
 	case *kruiseappsv1beta1.StatefulSet:
-		res, found, err := fetcher.GetAdvancedStsInCache(o.namespace, infos[0].Name, cl.Reader)
-		if err != nil || !found {
-			klog.Error(err)
-			return fmt.Errorf("failed to get %v of %v: %v", o.namespace, infos[0].Name, err)
+		obj, err := resource.
+			NewHelper(infos[0].Client, infos[0].Mapping).
+			DryRun(o.dryRunStrategy == cmdutil.DryRunServer).
+			Get(o.namespace, infos[0].Name)
+		if err != nil {
+			return err
 		}
+		res := obj.(*kruiseappsv1beta1.StatefulSet)
 
 		resolutionErrorsEncountered := false
 		containers, _ := selectContainers(res.Spec.Template.Spec.Containers, o.ContainerSelector)
@@ -620,8 +623,12 @@ func (o *EnvOptions) RunEnv() error {
 		}
 
 		if !o.Local {
-			if err := cl.Client.Update(context.TODO(), res); err != nil {
-				return err
+			_, err := resource.
+				NewHelper(infos[0].Client, infos[0].Mapping).
+				DryRun(o.dryRunStrategy == cmdutil.DryRunServer).
+				Replace(infos[0].Namespace, infos[0].Name, true, res)
+			if err != nil {
+				return fmt.Errorf("failed to patch env update to pod template: %v", err)
 			}
 		}
 

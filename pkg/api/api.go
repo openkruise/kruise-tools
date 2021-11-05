@@ -17,18 +17,14 @@ limitations under the License.
 package api
 
 import (
-	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
-	"sync"
-
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
-	"github.com/pkg/errors"
+	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/kubectl/pkg/scheme"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 var (
@@ -36,28 +32,12 @@ var (
 	CloneSetKind   = kruiseappsv1alpha1.SchemeGroupVersion.WithKind("CloneSet")
 )
 
-var managerOnce sync.Once
-var mgr ctrl.Manager
 var Scheme = scheme.Scheme
 
 func init() {
 	_ = clientgoscheme.AddToScheme(Scheme)
 	_ = kruiseappsv1alpha1.AddToScheme(Scheme)
 	_ = kruiseappsv1beta1.AddToScheme(Scheme)
-}
-
-func NewManager() ctrl.Manager {
-	managerOnce.Do(func() {
-		var err error
-		mgr, err = ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-			Scheme:             Scheme,
-			MetricsBindAddress: "0",
-		})
-		if err != nil {
-			panic(errors.Wrap(err, "unable to start manager"))
-		}
-	})
-	return mgr
 }
 
 func GetScheme() *runtime.Scheme {

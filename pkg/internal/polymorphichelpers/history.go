@@ -24,12 +24,13 @@ import (
 	"io"
 	"text/tabwriter"
 
-	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
-	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
-	internalapi "github.com/openkruise/kruise-tools/pkg/api"
-	"github.com/openkruise/kruise-tools/pkg/fetcher"
 	internalapps "github.com/openkruise/kruise-tools/pkg/internal/apps"
 
+	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
+	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
+	kruiseclientsets "github.com/openkruise/kruise-api/client/clientset/versioned"
+	kruiseclientappsv1alpha1 "github.com/openkruise/kruise-api/client/clientset/versioned/typed/apps/v1alpha1"
+	kruiseclientappsv1beta1 "github.com/openkruise/kruise-api/client/clientset/versioned/typed/apps/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -41,11 +42,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/client-go/kubernetes"
 	clientappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
-	"k8s.io/klog"
 	"k8s.io/kubectl/pkg/describe"
 	deploymentutil "k8s.io/kubectl/pkg/util/deployment"
 	sliceutil "k8s.io/kubectl/pkg/util/slice"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -58,9 +57,9 @@ type HistoryViewer interface {
 }
 
 type HistoryVisitor struct {
-	clientset kubernetes.Interface
-	c         client.Reader
-	result    HistoryViewer
+	clientset       kubernetes.Interface
+	kruiseclientset kruiseclientsets.Interface
+	result          HistoryViewer
 }
 
 func (v *HistoryVisitor) VisitDeployment(elem internalapps.GroupKindElement) {
@@ -82,10 +81,11 @@ func (v *HistoryVisitor) VisitReplicationController(kind internalapps.GroupKindE
 func (v *HistoryVisitor) VisitCronJob(kind internalapps.GroupKindElement)               {}
 
 // HistoryViewerFor returns an implementation of HistoryViewer interface for the given schema kind
-func HistoryViewerFor(kind schema.GroupKind, c kubernetes.Interface) (HistoryViewer, error) {
+func HistoryViewerFor(kind schema.GroupKind, c kubernetes.Interface, kc kruiseclientsets.Interface) (HistoryViewer, error) {
 	elem := internalapps.GroupKindElement(kind)
 	visitor := &HistoryVisitor{
-		clientset: c,
+		clientset:       c,
+		kruiseclientset: kc,
 	}
 
 	// Determine which HistoryViewer we need here
@@ -107,31 +107,27 @@ type DeploymentHistoryViewer struct {
 }
 
 type CloneSetHistoryViewer struct {
-	c client.Reader
-	k kubernetes.Interface
+	k  kubernetes.Interface
+	kc kruiseclientsets.Interface
 }
 
 type AdvancedStatefulSetHistoryViewer struct {
-	c client.Reader
-	k kubernetes.Interface
+	k  kubernetes.Interface
+	kc kruiseclientsets.Interface
 }
 
 func (v *HistoryVisitor) VisitCloneSet(kind internalapps.GroupKindElement) {
-	mgr := internalapi.NewManager()
-	v.c = mgr.GetAPIReader()
-	v.result = &CloneSetHistoryViewer{v.c, v.clientset}
+	v.result = &CloneSetHistoryViewer{v.clientset, v.kruiseclientset}
 }
 
 func (v *HistoryVisitor) VisitAdvancedStatefulSet(kind internalapps.GroupKindElement) {
-	mgr := internalapi.NewManager()
-	v.c = mgr.GetAPIReader()
-	v.result = &AdvancedStatefulSetHistoryViewer{v.c, v.clientset}
+	v.result = &AdvancedStatefulSetHistoryViewer{v.clientset, v.kruiseclientset}
 }
 
 // TODO impl ViewHistory func for CloneSet
 func (h *CloneSetHistoryViewer) ViewHistory(namespace, name string, revision int64) (string, error) {
 
-	cs, history, err := clonesetHistory(h.k.AppsV1(), h.c, namespace, name)
+	cs, history, err := clonesetHistory(h.k.AppsV1(), h.kc.AppsV1alpha1(), namespace, name)
 	if err != nil {
 		return "", err
 	}
@@ -146,7 +142,7 @@ func (h *CloneSetHistoryViewer) ViewHistory(namespace, name string, revision int
 }
 
 func (h *AdvancedStatefulSetHistoryViewer) ViewHistory(namespace, name string, revision int64) (string, error) {
-	asts, history, err := advancedstsHistory(h.k.AppsV1(), h.c, namespace, name)
+	asts, history, err := advancedstsHistory(h.k.AppsV1(), h.kc.AppsV1beta1(), namespace, name)
 	if err != nil {
 		return "", err
 	}
@@ -387,12 +383,11 @@ func daemonSetHistory(
 }
 
 func clonesetHistory(
-	apps clientappsv1.AppsV1Interface, cr client.Reader,
+	apps clientappsv1.AppsV1Interface, appsv1alpha1 kruiseclientappsv1alpha1.AppsV1alpha1Interface,
 	namespace, name string) (*kruiseappsv1alpha1.CloneSet, []*appsv1.ControllerRevision, error) {
-	cs, found, err := fetcher.GetCloneSetInCache(namespace, name, cr)
-	if err != nil || !found {
-		klog.Error(err)
-		return nil, nil, fmt.Errorf("failed to retrieve CloneSet %s: %s", name, err.Error())
+	cs, err := appsv1alpha1.CloneSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, nil, err
 	}
 	selector, err := metav1.LabelSelectorAsSelector(cs.Spec.Selector)
 	if err != nil {
@@ -411,12 +406,11 @@ func clonesetHistory(
 }
 
 func advancedstsHistory(
-	apps clientappsv1.AppsV1Interface, cr client.Reader,
+	apps clientappsv1.AppsV1Interface, appsv1beta1 kruiseclientappsv1beta1.AppsV1beta1Interface,
 	namespace, name string) (*kruiseappsv1beta1.StatefulSet, []*appsv1.ControllerRevision, error) {
-	asts, found, err := fetcher.GetAdvancedStsInCache(namespace, name, cr)
-	if err != nil || !found {
-		klog.Error(err)
-		return nil, nil, fmt.Errorf("failed to retrieve Advanced StatefulSet %s: %s", name, err.Error())
+	asts, err := appsv1beta1.StatefulSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, nil, err
 	}
 	selector, err := metav1.LabelSelectorAsSelector(asts.Spec.Selector)
 	if err != nil {
@@ -543,7 +537,7 @@ func tabbedString(f func(io.Writer) error) (string, error) {
 	}
 
 	out.Flush()
-	str := string(buf.String())
+	str := buf.String()
 	return str, nil
 }
 

@@ -17,30 +17,32 @@ limitations under the License.
 package scaledown
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/openkruise/kruise-tools/pkg/fetcher"
-	"k8s.io/klog"
-	cmdutil "k8s.io/kubectl/pkg/cmd/util"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
+	"k8s.io/cli-runtime/pkg/resource"
 )
 
-func (o *ScaleDownOptions) ScaleDownCloneSet(f cmdutil.Factory, cloneSetName string, cr client.Reader, cl client.Client) error {
-	res, found, err := fetcher.GetCloneSetInCache(o.Namespace, cloneSetName, cr)
-	if err != nil || !found {
-		klog.Error(err)
-		return fmt.Errorf("failed to retrieve CloneSet %s: %s", cloneSetName, err.Error())
+func (o *ScaleDownOptions) ScaleDownCloneSet(info *resource.Info) error {
+	cloneSetName := info.Name
+	obj, err := resource.
+		NewHelper(info.Client, info.Mapping).
+		Get(info.Namespace, info.Name)
+	if err != nil {
+		return err
 	}
+	res := obj.(*kruiseappsv1alpha1.CloneSet)
 
 	podsSlc := strings.Split(o.Pods, ",")
 	afterReplicas := *res.Spec.Replicas - int32(len(podsSlc))
 	res.Spec.ScaleStrategy.PodsToDelete = append(res.Spec.ScaleStrategy.PodsToDelete, podsSlc...)
 	res.Spec.Replicas = &afterReplicas
 
-	err = cl.Update(context.TODO(), res)
+	_, err = resource.
+		NewHelper(info.Client, info.Mapping).
+		Replace(info.Namespace, info.Name, true, res)
 	if err != nil {
 		fmt.Fprintf(o.Out, "%s delete pods %s failed\n", cloneSetName, podsSlc)
 		return fmt.Errorf("scaledown cloneset %s failed, error is %v", res.Name, err)

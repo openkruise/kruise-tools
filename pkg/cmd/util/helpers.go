@@ -21,34 +21,16 @@ import (
 	"os"
 	"strings"
 
-	internalapi "github.com/openkruise/kruise-tools/pkg/api"
 	"github.com/spf13/cobra"
-	"k8s.io/klog"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/klog/v2"
 )
 
 const (
 	DefaultErrorExitCode = 1
 )
 
-type baseClient struct {
-	Client client.Client
-	Reader client.Reader
-	Cache  cache.Cache
-}
-
-func BaseClient() *baseClient {
-	mgr := internalapi.NewManager()
-	return &baseClient{
-		Client: mgr.GetClient(),
-		Reader: mgr.GetAPIReader(),
-		Cache:  mgr.GetCache(),
-	}
-}
-
 func Print(msg string) {
-	if klog.V(2) {
+	if klog.V(2).Enabled() {
 		klog.FatalDepth(2, msg)
 	}
 	if len(msg) > 0 {
@@ -61,7 +43,7 @@ func Print(msg string) {
 }
 
 func fatal(msg string, code int) {
-	if klog.V(2) {
+	if klog.V(2).Enabled() {
 		klog.FatalDepth(2, msg)
 	}
 	if len(msg) > 0 {
