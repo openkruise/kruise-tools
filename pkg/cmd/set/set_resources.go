@@ -17,14 +17,11 @@ limitations under the License.
 package set
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
 	appsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	appsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
-	"github.com/openkruise/kruise-tools/pkg/cmd/util"
-	"github.com/openkruise/kruise-tools/pkg/fetcher"
 	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
 
@@ -36,7 +33,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	generateversioned "k8s.io/kubectl/pkg/generate/versioned"
 	"k8s.io/kubectl/pkg/scheme"
@@ -245,44 +242,25 @@ func (o *SetResourcesOptions) Run() error {
 	if len(o.Infos) == 0 {
 		return nil
 	}
-	cl := util.BaseClient()
 
 	switch o.Infos[0].Object.(type) {
 	case *appsv1alpha1.CloneSet:
 		var allErrs []error
 		transformed := false
 
-		res, found, err := fetcher.GetCloneSetInCache(o.Infos[0].Namespace, o.Infos[0].Name, cl.Reader)
-		if err != nil || !found {
-			klog.Error(err)
-			return fmt.Errorf("failed to retrieve CloneSet %s: %s", o.Infos[0].Name, err.Error())
+		obj, err := resource.
+			NewHelper(o.Infos[0].Client, o.Infos[0].Mapping).
+			Get(o.Infos[0].Namespace, o.Infos[0].Name)
+		if err != nil {
+			return err
 		}
+		res := obj.(*appsv1alpha1.CloneSet)
 
 		containers, _ := selectContainers(res.Spec.Template.Spec.Containers, o.ContainerSelector)
 
 		_, err = meta.NewAccessor().Name(res)
 		if err != nil {
 			return err
-		}
-
-		gvks, _, err := scheme.Scheme.ObjectKinds(res)
-		if err != nil {
-			return err
-		}
-
-		objKind := res.GetObjectKind().GroupVersionKind().Kind
-		if len(objKind) == 0 {
-			for _, gvk := range gvks {
-				if len(gvk.Kind) == 0 {
-					continue
-				}
-				if len(gvk.Version) == 0 || gvk.Version == runtime.APIVersionInternal {
-					continue
-				}
-
-				objKind = gvk.Kind
-				break
-			}
 		}
 
 		if len(containers) != 0 {
@@ -315,7 +293,10 @@ func (o *SetResourcesOptions) Run() error {
 		}
 
 		if !o.Local {
-			if err := cl.Client.Update(context.TODO(), res); err != nil {
+			_, err = resource.
+				NewHelper(o.Infos[0].Client, o.Infos[0].Mapping).
+				Replace(o.Infos[0].Namespace, o.Infos[0].Name, true, res)
+			if err != nil {
 				return err
 			}
 		}
@@ -329,37 +310,19 @@ func (o *SetResourcesOptions) Run() error {
 		var allErrs []error
 		transformed := false
 
-		res, found, err := fetcher.GetAdvancedStsInCache(o.Infos[0].Namespace, o.Infos[0].Name, cl.Reader)
-		if err != nil || !found {
-			klog.Error(err)
-			return fmt.Errorf("failed to retrieve CloneSet %s: %s", o.Infos[0].Name, err.Error())
+		obj, err := resource.
+			NewHelper(o.Infos[0].Client, o.Infos[0].Mapping).
+			Get(o.Infos[0].Namespace, o.Infos[0].Name)
+		if err != nil {
+			return err
 		}
+		res := obj.(*appsv1beta1.StatefulSet)
 
 		containers, _ := selectContainers(res.Spec.Template.Spec.Containers, o.ContainerSelector)
 
 		_, err = meta.NewAccessor().Name(res)
 		if err != nil {
 			return err
-		}
-
-		gvks, _, err := scheme.Scheme.ObjectKinds(res)
-		if err != nil {
-			return err
-		}
-
-		objKind := res.GetObjectKind().GroupVersionKind().Kind
-		if len(objKind) == 0 {
-			for _, gvk := range gvks {
-				if len(gvk.Kind) == 0 {
-					continue
-				}
-				if len(gvk.Version) == 0 || gvk.Version == runtime.APIVersionInternal {
-					continue
-				}
-
-				objKind = gvk.Kind
-				break
-			}
 		}
 
 		if len(containers) != 0 {
@@ -392,7 +355,10 @@ func (o *SetResourcesOptions) Run() error {
 		}
 
 		if !o.Local {
-			if err := cl.Client.Update(context.TODO(), res); err != nil {
+			_, err = resource.
+				NewHelper(o.Infos[0].Client, o.Infos[0].Mapping).
+				Replace(o.Infos[0].Namespace, o.Infos[0].Name, true, res)
+			if err != nil {
 				return err
 			}
 		}

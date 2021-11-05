@@ -17,18 +17,13 @@ limitations under the License.
 package rollout
 
 import (
-	"context"
 	"fmt"
 
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
 	internalapi "github.com/openkruise/kruise-tools/pkg/api"
-	"github.com/openkruise/kruise-tools/pkg/cmd/util"
-	"github.com/openkruise/kruise-tools/pkg/fetcher"
 	internalpolymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
-	"k8s.io/klog"
-
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -161,19 +156,23 @@ func (o RestartOptions) RunRestart() error {
 		// aggregation of errors.
 		allErrs = append(allErrs, err)
 	}
-	cl := util.BaseClient()
 
 	switch infos[0].Object.(type) {
 	case *kruiseappsv1alpha1.CloneSet:
 
-		res, found, err := fetcher.GetCloneSetInCache(infos[0].Namespace, infos[0].Name, cl.Reader)
-		if err != nil || !found {
-			klog.Error(err)
-			return fmt.Errorf("failed to retrieve CloneSet %s: %s", infos[0].Name, err.Error())
+		obj, err := resource.
+			NewHelper(infos[0].Client, infos[0].Mapping).
+			Get(infos[0].Namespace, infos[0].Name)
+		if err != nil {
+			return err
 		}
+		res := obj.(*kruiseappsv1alpha1.CloneSet)
 		internalpolymorphichelpers.UpdateResourceEnv(res)
 
-		if err := cl.Client.Update(context.TODO(), res); err != nil {
+		_, err = resource.
+			NewHelper(infos[0].Client, infos[0].Mapping).
+			Replace(infos[0].Namespace, infos[0].Name, true, res)
+		if err != nil {
 			return err
 		}
 		printer, err := o.ToPrinter("restarted")
@@ -186,14 +185,19 @@ func (o RestartOptions) RunRestart() error {
 		return utilerrors.NewAggregate(allErrs)
 
 	case *kruiseappsv1beta1.StatefulSet:
-		res, found, err := fetcher.GetAdvancedStsInCache(infos[0].Namespace, infos[0].Name, cl.Reader)
-		if err != nil || !found {
-			klog.Error(err)
-			return fmt.Errorf("failed to retrieve CloneSet %s: %s", infos[0].Name, err.Error())
+		obj, err := resource.
+			NewHelper(infos[0].Client, infos[0].Mapping).
+			Get(infos[0].Namespace, infos[0].Name)
+		if err != nil {
+			return err
 		}
+		res := obj.(*kruiseappsv1beta1.StatefulSet)
 		internalpolymorphichelpers.UpdateResourceEnv(res)
 
-		if err := cl.Client.Update(context.TODO(), res); err != nil {
+		_, err = resource.
+			NewHelper(infos[0].Client, infos[0].Mapping).
+			Replace(infos[0].Namespace, infos[0].Name, true, res)
+		if err != nil {
 			return err
 		}
 		printer, err := o.ToPrinter("restarted")

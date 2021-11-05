@@ -241,13 +241,13 @@ func UpdateResourceEnv(object runtime.Object) {
 
 	switch obj := object.(type) {
 	case *kruiseappsv1alpha1.CloneSet:
-		for i, _ := range obj.Spec.Template.Spec.Containers {
+		for i := range obj.Spec.Template.Spec.Containers {
 			tmp := &obj.Spec.Template.Spec.Containers[i]
 			tmp.Env = updateEnv(tmp.Env, addingEnvs, []string{})
 		}
 
 	case *kruiseappsv1beta1.StatefulSet:
-		for i, _ := range obj.Spec.Template.Spec.Containers {
+		for i := range obj.Spec.Template.Spec.Containers {
 			tmp := &obj.Spec.Template.Spec.Containers[i]
 			tmp.Env = updateEnv(tmp.Env, addingEnvs, []string{})
 		}

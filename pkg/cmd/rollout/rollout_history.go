@@ -22,8 +22,8 @@ import (
 
 	internalapi "github.com/openkruise/kruise-tools/pkg/api"
 	internalpolymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
-	"github.com/spf13/cobra"
 
+	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"

@@ -19,6 +19,7 @@ package cloneset
 import (
 	appsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	"github.com/openkruise/kruise-tools/pkg/api"
+
 	apps "k8s.io/api/apps/v1"
 	toolscache "k8s.io/client-go/tools/cache"
 )

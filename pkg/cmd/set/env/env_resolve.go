@@ -77,7 +77,7 @@ func getConfigMapRefValue(client kubernetes.Interface, namespace string, store *
 		store.ConfigMapStore[configMapSelector.Name] = configMap
 	}
 	if data, ok := configMap.Data[configMapSelector.Key]; ok {
-		return string(data), nil
+		return data, nil
 	}
 	return "", fmt.Errorf("key %s not found in config map %s", configMapSelector.Key, configMapSelector.Name)
 }

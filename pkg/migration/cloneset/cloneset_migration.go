@@ -26,6 +26,7 @@ import (
 	"github.com/openkruise/kruise-tools/pkg/api"
 	"github.com/openkruise/kruise-tools/pkg/migration"
 	"github.com/openkruise/kruise-tools/pkg/utils"
+
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -113,7 +114,7 @@ func NewControl(cfg *rest.Config, stopChan <-chan struct{}) (migration.Control, 
 
 func (c *control) Submit(src api.ResourceRef, dst api.ResourceRef, opts migration.Options) (migration.Result, error) {
 	if opts.Replicas != nil && *opts.Replicas <= 0 {
-		return migration.Result{}, fmt.Errorf("invlid replicas %v", *opts.Replicas)
+		return migration.Result{}, fmt.Errorf("invalid replicas %v", *opts.Replicas)
 	} else if src.GetGroupVersionKind() != api.DeploymentKind {
 		return migration.Result{}, fmt.Errorf("invalid src type, currently only support %v", api.DeploymentKind.String())
 	} else if dst.GetGroupVersionKind() != api.CloneSetKind {
