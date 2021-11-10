@@ -32,26 +32,14 @@ import (
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/kubectl/pkg/cmd/apiresources"
 	"k8s.io/kubectl/pkg/cmd/apply"
-	"k8s.io/kubectl/pkg/cmd/attach"
-	"k8s.io/kubectl/pkg/cmd/autoscale"
-	"k8s.io/kubectl/pkg/cmd/certificates"
-	"k8s.io/kubectl/pkg/cmd/clusterinfo"
 	cmdconfig "k8s.io/kubectl/pkg/cmd/config"
-	"k8s.io/kubectl/pkg/cmd/describe"
 	"k8s.io/kubectl/pkg/cmd/diff"
-	"k8s.io/kubectl/pkg/cmd/drain"
-	cmdexec "k8s.io/kubectl/pkg/cmd/exec"
 	"k8s.io/kubectl/pkg/cmd/kustomize"
-	"k8s.io/kubectl/pkg/cmd/logs"
 	"k8s.io/kubectl/pkg/cmd/options"
 	"k8s.io/kubectl/pkg/cmd/patch"
 	"k8s.io/kubectl/pkg/cmd/plugin"
-	"k8s.io/kubectl/pkg/cmd/portforward"
 	"k8s.io/kubectl/pkg/cmd/replace"
-	"k8s.io/kubectl/pkg/cmd/run"
 	"k8s.io/kubectl/pkg/cmd/scale"
-	"k8s.io/kubectl/pkg/cmd/taint"
-	"k8s.io/kubectl/pkg/cmd/top"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/cmd/version"
 	"k8s.io/kubectl/pkg/cmd/wait"
@@ -319,9 +307,8 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 	warningsAsErrors := false
 	// Parent command to which all subcommands are added.
 	cmds := &cobra.Command{
-		Use:     "kubectl-kruise",
-		Short:   i18n.T("kubectl-kruise controls the OpenKruise manager"),
-		Aliases: []string{"kk"},
+		Use:   "kubectl-kruise",
+		Short: i18n.T("kubectl-kruise controls the OpenKruise CRs"),
 		Long: templates.LongDesc(`
       kubectl-kruise controls the OpenKruise manager.
 
@@ -377,10 +364,10 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 
 	groups := templates.CommandGroups{
 		{
-			Message: "Basic Commands (Beginner):",
+			Message: "Basic Commands:",
 			Commands: []*cobra.Command{
 				expose.NewCmdExposeService(f, ioStreams),
-				run.NewCmdRun(f, ioStreams),
+				cmdWithShortOverwrite(scale.NewCmdScale(f, ioStreams), "Set a new size for a Deployment, ReplicaSet, CloneSet, or Advanced StatefulSet"),
 			},
 		},
 
@@ -403,36 +390,6 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 			Message: "Scaledown Commands",
 			Commands: []*cobra.Command{
 				scaledown.NewCmdScaleDown(f, ioStreams),
-			},
-		},
-
-		{
-			Message: "Basic Commands:",
-			Commands: []*cobra.Command{
-				scale.NewCmdScale(f, ioStreams),
-				autoscale.NewCmdAutoscale(f, ioStreams),
-			},
-		},
-		{
-			Message: "Cluster Management Commands:",
-			Commands: []*cobra.Command{
-				certificates.NewCmdCertificate(f, ioStreams),
-				clusterinfo.NewCmdClusterInfo(f, ioStreams),
-				top.NewCmdTop(f, ioStreams),
-				drain.NewCmdCordon(f, ioStreams),
-				drain.NewCmdUncordon(f, ioStreams),
-				drain.NewCmdDrain(f, ioStreams),
-				taint.NewCmdTaint(f, ioStreams),
-			},
-		},
-		{
-			Message: "Troubleshooting and Debugging Commands:",
-			Commands: []*cobra.Command{
-				describe.NewCmdDescribe("kubectl-kruise", f, ioStreams),
-				logs.NewCmdLogs(f, ioStreams),
-				attach.NewCmdAttach(f, ioStreams),
-				cmdexec.NewCmdExec(f, ioStreams),
-				portforward.NewCmdPortForward(f, ioStreams),
 			},
 		},
 		{
@@ -495,5 +452,10 @@ func NewDefaultKubectlCommand() *cobra.Command {
 func NewDefaultKubectlCommandWithArgs(args []string, in io.Reader, out, errout io.Writer) *cobra.Command {
 	cmd := NewKubectlCommand(in, out, errout)
 
+	return cmd
+}
+
+func cmdWithShortOverwrite(cmd *cobra.Command, short string) *cobra.Command {
+	cmd.Short = i18n.T(short)
 	return cmd
 }

@@ -135,7 +135,7 @@ func NewCmdExposeService(f cmdutil.Factory, streams genericclioptions.IOStreams)
 	cmd := &cobra.Command{
 		Use:                   "expose (-f FILENAME | TYPE NAME) [--port=port] [--protocol=TCP|UDP|SCTP] [--target-port=number-or-name] [--name=name] [--external-ip=external-ip-of-service] [--type=type]",
 		DisableFlagsInUseLine: true,
-		Short:                 i18n.T("Take a replication controller, service, deployment or pod and expose it as a new Kubernetes Service"),
+		Short:                 i18n.T("Take a workload(e.g. deployment, cloneset), service or pod and expose it as a new Kubernetes Service"),
 		Long:                  exposeLong,
 		Example:               exposeExample,
 		Run: func(cmd *cobra.Command, args []string) {
