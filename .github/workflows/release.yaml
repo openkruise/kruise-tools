@@ -43,7 +43,7 @@ jobs:
         run: |
           ${{ env.GO_BUILD_ENV }} GOOS=${{ steps.get_matrix.outputs.OS }} GOARCH=${{ steps.get_matrix.outputs.ARCH }} \
             go build -ldflags "${{ env.LDFLAGS }}" \
-            -o _bin/kruise/${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}/kubectl-kruise/kubectl-kruise -v \
+            -o _bin/kubectl-kruise/${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}/kubectl-kruise -v \
             ./cmd/plugin/main.go
       - name: Compress
         run: |
@@ -67,12 +67,10 @@ jobs:
           path: ./_bin/sha256-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.txt
           retention-days: 1
   upload-sha256sums-plugin:
-    needs: build
+    needs: build_and_upload
     runs-on: ubuntu-latest
     name: upload-sha256sums
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
       - name: Get release
         id: get_release
         uses: bruceadams/get-release@v1.2.2
@@ -82,7 +80,7 @@ jobs:
           name: sha256sums
       - shell: bash
         run: |
-          for file in *
+          for file in *.txt
           do
             cat ${file} >> sha256sums.txt
           done
