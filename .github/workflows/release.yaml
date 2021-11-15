@@ -67,7 +67,7 @@ jobs:
           path: ./_bin/sha256-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.txt
           retention-days: 1
   upload-sha256sums-plugin:
-    needs: build
+    needs: build_and_upload
     runs-on: ubuntu-latest
     name: upload-sha256sums
     steps:
