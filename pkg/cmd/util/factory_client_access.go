@@ -133,18 +133,3 @@ func (f *factoryImpl) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, e
 func (f *factoryImpl) ToRawKubeConfigLoader() clientcmd.ClientConfig {
 	return f.clientGetter.ToRawKubeConfigLoader()
 }
-
-/*
-func (f *factoryImpl) OpenAPIGetter() discovery.OpenAPISchemaInterface {
-	discovery, err := f.clientGetter.ToDiscoveryClient()
-	if err != nil {
-		return nil
-	}
-	f.getter.Do(func() {
-		f.openAPIGetter = openapi.NewOpenAPIGetter(discovery)
-	})
-
-	return f.openAPIGetter
-}
-
-*/
