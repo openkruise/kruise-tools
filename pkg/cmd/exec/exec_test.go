@@ -28,6 +28,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/openkruise/kruise-tools/pkg/cmd/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -129,6 +130,16 @@ func TestPodAndContainer(t *testing.T) {
 			name:              "cmd, container in flag",
 			obj:               execPod(),
 		},
+		{
+			p:                 &ExecOptions{StreamOptions: StreamOptions{SidecarSetContainer: "sidecar"}},
+			args:              []string{"foo", "cmd"},
+			argsLenAtDash:     -1,
+			expectedPod:       "foo",
+			expectedContainer: "sidecar-1",
+			expectedArgs:      []string{"cmd"},
+			name:              "cmd, working container in flag",
+			obj:               execPod(),
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -146,6 +157,11 @@ func TestPodAndContainer(t *testing.T) {
 
 			cmd := NewCmdExec(tf, genericclioptions.NewTestIOStreamsDiscard())
 			options := test.p
+			if test.obj != nil {
+				if containerName, ok := util.GetPodHotUpgradeInfoInAnnotations(test.obj)[options.SidecarSetContainer]; ok {
+					options.ContainerName = containerName
+				}
+			}
 			options.ErrOut = bytes.NewBuffer([]byte{})
 			options.Out = bytes.NewBuffer([]byte{})
 			err = options.Complete(tf, cmd, test.args, test.argsLenAtDash)
@@ -176,6 +192,102 @@ func TestPodAndContainer(t *testing.T) {
 			}
 		})
 	}
+}
+func TestExecWorkingContainer(t *testing.T) {
+	version := "v1"
+	tests := []struct {
+		name, version, podPath, fetchPodPath, execPath string
+		pod                                            *corev1.Pod
+		execErr                                        bool
+	}{
+		{
+			name:         "pod exec",
+			version:      version,
+			podPath:      "/api/" + version + "/namespaces/test/pods/foo",
+			fetchPodPath: "/namespaces/test/pods/foo",
+			execPath:     "/api/" + version + "/namespaces/test/pods/foo/exec",
+			pod:          execPod(),
+		},
+		{
+			name:         "pod exec error",
+			version:      version,
+			podPath:      "/api/" + version + "/namespaces/test/pods/foo",
+			fetchPodPath: "/namespaces/test/pods/foo",
+			execPath:     "/api/" + version + "/namespaces/test/pods/foo/exec",
+			pod:          execPod(),
+			execErr:      true,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tf := cmdtesting.NewTestFactory().WithNamespace("test")
+			defer tf.Cleanup()
+
+			codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
+			ns := scheme.Codecs.WithoutConversion()
+
+			tf.Client = &fake.RESTClient{
+				GroupVersion:         schema.GroupVersion{Group: "", Version: "v1"},
+				NegotiatedSerializer: ns,
+				Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+					switch p, m := req.URL.Path, req.Method; {
+					case p == test.podPath && m == "GET":
+						body := cmdtesting.ObjBody(codec, test.pod)
+						return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: body}, nil
+					case p == test.fetchPodPath && m == "GET":
+						body := cmdtesting.ObjBody(codec, test.pod)
+						return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: body}, nil
+					default:
+						t.Errorf("%s: unexpected request: %s %#v\n%#v", test.name, req.Method, req.URL, req)
+						return nil, fmt.Errorf("unexpected request")
+					}
+				}),
+			}
+			tf.ClientConfigVal = &restclient.Config{APIPath: "/api", ContentConfig: restclient.ContentConfig{NegotiatedSerializer: scheme.Codecs, GroupVersion: &schema.GroupVersion{Version: test.version}}}
+			ex := &fakeRemoteExecutor{}
+			if test.execErr {
+				ex.execErr = fmt.Errorf("exec error")
+			}
+			params := &ExecOptions{
+				StreamOptions: StreamOptions{
+					PodName:             "foo",
+					SidecarSetContainer: "sidecar",
+					IOStreams:           genericclioptions.NewTestIOStreamsDiscard(),
+				},
+				Executor: ex,
+			}
+			cmd := NewCmdExec(tf, genericclioptions.NewTestIOStreamsDiscard())
+			args := []string{"pod/foo", "command"}
+			if err := params.Complete(tf, cmd, args, -1); err != nil {
+				t.Fatal(err)
+			}
+			err := params.Run()
+			if test.execErr && err != ex.execErr {
+				t.Errorf("%s: Unexpected exec error: %v", test.name, err)
+				return
+			}
+			if !test.execErr && err != nil {
+				t.Errorf("%s: Unexpected error: %v", test.name, err)
+				return
+			}
+			if test.execErr {
+				return
+			}
+			if ex.url.Path != test.execPath {
+				t.Errorf("%s: Did not get expected path for exec request", test.name)
+				return
+			}
+			if strings.Count(ex.url.RawQuery, "container=sidecar-1") != 1 {
+				t.Errorf("%s: Did not get expected container query param for exec request", test.name)
+				t.Errorf("query param: %s", ex.url.RawQuery)
+				return
+			}
+			if ex.method != "POST" {
+				t.Errorf("%s: Did not get method for exec request: %s", test.name, ex.method)
+			}
+		})
+	}
+
 }
 
 func TestExec(t *testing.T) {
@@ -275,13 +387,16 @@ func TestExec(t *testing.T) {
 
 func execPod() *corev1.Pod {
 	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test", ResourceVersion: "10"},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test", ResourceVersion: "10", Annotations: map[string]string{util.SidecarSetWorkingHotUpgradeContainer: "{\"sidecar\":\"sidecar-1\"}"}},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyAlways,
 			DNSPolicy:     corev1.DNSClusterFirst,
 			Containers: []corev1.Container{
 				{
 					Name: "bar",
+				},
+				{
+					Name: "sidecar-1",
 				},
 			},
 		},
