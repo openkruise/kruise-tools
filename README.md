@@ -107,6 +107,19 @@ $ kubectl kruise scaledown cloneset/nginx --pods pod-a,pod-b
 
 It will decrease **replicas=replicas-2** of this cloneset and delete the specified pods.
 
+### exec
+
+Exec working sidecar container of pod when sidecarset is hot-upgrade.
+
+```bash
+# Get output from running 'date' command in working sidecar container from pod mypod
+kubectl kruise exec mypod -S sidecar-container -- date
+
+# Switch to raw terminal mode, sends stdin to 'bash' in working sidecar container from cloneset myclone 
+# and sends stdout/stderr from 'bash' back to the client
+kubectl kruise exec clone/myclone -S sidecar-container -it -- bash
+```
+
 ### TODO
 #### kubectl kruise migrate
    * [x] migrate [options]

@@ -138,6 +138,12 @@ func SelectorsForObject(object runtime.Object) (namespace string, selector label
 		if err != nil {
 			return "", nil, fmt.Errorf("invalid label selector: %v", err)
 		}
+	case *kruiseappsv1alpha1.CloneSet:
+		namespace = t.Namespace
+		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
+		if err != nil {
+			return "", nil, fmt.Errorf("invalid label selector:%v", err)
+		}
 	case *appsv1.DaemonSet:
 		namespace = t.Namespace
 		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)

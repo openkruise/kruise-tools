@@ -21,12 +21,14 @@ import (
 	"io"
 	"os"
 
+	cmdexec "github.com/openkruise/kruise-tools/pkg/cmd/exec"
 	"github.com/openkruise/kruise-tools/pkg/cmd/expose"
 	"github.com/openkruise/kruise-tools/pkg/cmd/migrate"
 	krollout "github.com/openkruise/kruise-tools/pkg/cmd/rollout"
 	"github.com/openkruise/kruise-tools/pkg/cmd/scaledown"
 	kset "github.com/openkruise/kruise-tools/pkg/cmd/set"
 	"github.com/spf13/cobra"
+
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/tools/clientcmd"
 	cliflag "k8s.io/component-base/cli/flag"
@@ -368,6 +370,12 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 			Commands: []*cobra.Command{
 				expose.NewCmdExposeService(f, ioStreams),
 				cmdWithShortOverwrite(scale.NewCmdScale(f, ioStreams), "Set a new size for a Deployment, ReplicaSet, CloneSet, or Advanced StatefulSet"),
+			},
+		},
+		{
+			Message: "Troubleshooting and Debugging Commands:",
+			Commands: []*cobra.Command{
+				cmdexec.NewCmdExec(f, ioStreams),
 			},
 		},
 
