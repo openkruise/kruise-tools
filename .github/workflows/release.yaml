@@ -91,6 +91,5 @@ jobs:
           asset_path: sha256sums.txt
           asset_name: sha256sums.txt
           asset_content_type: text/plain
-# first time manual upload krew
-#      - name: Update kubectl plugin version in krew-index
-#        uses: rajatjindal/krew-release-bot@v0.0.40
+      - name: Update kubectl plugin version in krew-index
+        uses: rajatjindal/krew-release-bot@v0.0.40
