@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/go-logr/logr v0.2.1 // indirect
 	github.com/lithammer/dedent v1.1.0
-	github.com/moby/term v0.0.0-20200312100748-672ec06f55cd // indirect
+	github.com/moby/term v0.0.0-20200312100748-672ec06f55cd
 	github.com/openkruise/kruise-api v0.10.0
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
