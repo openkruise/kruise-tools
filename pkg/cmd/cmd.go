@@ -28,8 +28,8 @@ import (
 	"github.com/openkruise/kruise-tools/pkg/cmd/scaledown"
 	kset "github.com/openkruise/kruise-tools/pkg/cmd/set"
 	"github.com/spf13/cobra"
-
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/tools/clientcmd"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/kubectl/pkg/cmd/apiresources"
