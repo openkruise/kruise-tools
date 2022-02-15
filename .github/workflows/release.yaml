@@ -71,6 +71,8 @@ jobs:
     runs-on: ubuntu-latest
     name: upload-sha256sums
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
       - name: Get release
         id: get_release
         uses: bruceadams/get-release@v1.2.2
