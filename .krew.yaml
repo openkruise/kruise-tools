@@ -9,7 +9,7 @@ spec:
         matchLabels:
           os: linux
           arch: amd64
-      {{addURIAndSha https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-linux-amd64.tar.gz .TagName }}
+      {{addURIAndSha "https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-linux-amd64.tar.gz" .TagName }}
       files:
         - from: "*/kubectl-kruise"
           to: "."
@@ -20,7 +20,7 @@ spec:
         matchLabels:
           os: linux
           arch: arm64
-      {{addURIAndSha https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-linux-arm64.tar.gz .TagName }}
+      {{addURIAndSha "https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-linux-arm64.tar.gz" .TagName }}
       files:
         - from: "*/kubectl-kruise"
           to: "."
@@ -31,7 +31,7 @@ spec:
         matchLabels:
           os: darwin
           arch: amd64
-      {{addURIAndSha https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-darwin-amd64.tar.gz .TagName }}
+      {{addURIAndSha "https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-darwin-amd64.tar.gz" .TagName }}
       files:
         - from: "*/kubectl-kruise"
           to: "."
@@ -42,7 +42,7 @@ spec:
         matchLabels:
           os: darwin
           arch: arm64
-      {{addURIAndSha https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-darwin-arm64.tar.gz .TagName }}
+      {{addURIAndSha "https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-darwin-arm64.tar.gz" .TagName }}
       files:
         - from: "*/kubectl-kruise"
           to: "."
@@ -53,7 +53,7 @@ spec:
         matchLabels:
           os: windows
           arch: amd64
-      {{addURIAndSha https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-windows-amd64.tar.gz .TagName }}
+      {{addURIAndSha "https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-windows-amd64.tar.gz" .TagName }}
       files:
         - from: "*/kubectl-kruise"
           to: "."
