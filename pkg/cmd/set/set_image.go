@@ -290,7 +290,7 @@ func (o *SetImageOptions) Run() error {
 		actual, err := resource.
 			NewHelper(info.Client, info.Mapping).
 			DryRun(o.DryRunStrategy == cmdutil.DryRunServer).
-			Patch(info.Namespace, info.Name, types.MergePatchType, patch.Patch, nil)
+			Patch(info.Namespace, info.Name, types.MergePatchType, patch.After, nil)
 		if err != nil {
 			allErrs = append(allErrs, fmt.Errorf("failed to patch image update to pod template: %v", err))
 			continue
