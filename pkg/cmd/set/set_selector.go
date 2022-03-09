@@ -224,7 +224,7 @@ func (o *SetSelectorOptions) RunSelector() error {
 		actual, err := resource.
 			NewHelper(info.Client, info.Mapping).
 			DryRun(o.dryRunStrategy == cmdutil.DryRunServer).
-			Patch(info.Namespace, info.Name, types.MergePatchType, patch.Patch, nil)
+			Patch(info.Namespace, info.Name, types.MergePatchType, patch.After, nil)
 		if err != nil {
 			return err
 		}
