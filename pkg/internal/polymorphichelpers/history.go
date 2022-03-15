@@ -116,12 +116,21 @@ type AdvancedStatefulSetHistoryViewer struct {
 	kc kruiseclientsets.Interface
 }
 
+type AdvancedDaemonSetHistoryViewer struct {
+	k  kubernetes.Interface
+	kc kruiseclientsets.Interface
+}
+
 func (v *HistoryVisitor) VisitCloneSet(kind internalapps.GroupKindElement) {
 	v.result = &CloneSetHistoryViewer{v.clientset, v.kruiseclientset}
 }
 
 func (v *HistoryVisitor) VisitAdvancedStatefulSet(kind internalapps.GroupKindElement) {
 	v.result = &AdvancedStatefulSetHistoryViewer{v.clientset, v.kruiseclientset}
+}
+
+func (v *HistoryVisitor) VisitAdvancedDaemonSet(kind internalapps.GroupKindElement) {
+	v.result = &AdvancedDaemonSetHistoryViewer{v.clientset, v.kruiseclientset}
 }
 
 // TODO impl ViewHistory func for CloneSet
@@ -133,11 +142,11 @@ func (h *CloneSetHistoryViewer) ViewHistory(namespace, name string, revision int
 	}
 
 	return printHistory(history, revision, func(history *appsv1.ControllerRevision) (*corev1.PodTemplateSpec, error) {
-		stsOfHistory, err := applyCloneSetHistory(cs, history)
+		cloneSetOfHistory, err := applyCloneSetHistory(cs, history)
 		if err != nil {
 			return nil, err
 		}
-		return &stsOfHistory.Spec.Template, err
+		return &cloneSetOfHistory.Spec.Template, err
 	})
 }
 
@@ -152,6 +161,20 @@ func (h *AdvancedStatefulSetHistoryViewer) ViewHistory(namespace, name string, r
 			return nil, err
 		}
 		return &astsOfHistory.Spec.Template, err
+	})
+}
+
+func (h *AdvancedDaemonSetHistoryViewer) ViewHistory(namespace, name string, revision int64) (string, error) {
+	ads, history, err := advancedDaemonSetHistory(h.k.AppsV1(), h.kc.AppsV1alpha1(), namespace, name)
+	if err != nil {
+		return "", err
+	}
+	return printHistory(history, revision, func(history *appsv1.ControllerRevision) (*corev1.PodTemplateSpec, error) {
+		adsOfHistory, err := applyAdvancedDaemonSetHistory(ads, history)
+		if err != nil {
+			return nil, err
+		}
+		return &adsOfHistory.Spec.Template, err
 	})
 }
 
@@ -382,6 +405,29 @@ func daemonSetHistory(
 	return ds, history, nil
 }
 
+// advancedDaemonSetHistory returns the Advanced DaemonSet named name in namespace and all ControllerRevisions in its history.
+func advancedDaemonSetHistory(
+	apps clientappsv1.AppsV1Interface, appsv1alpha1 kruiseclientappsv1alpha1.AppsV1alpha1Interface,
+	namespace, name string) (*kruiseappsv1alpha1.DaemonSet, []*appsv1.ControllerRevision, error) {
+	ds, err := appsv1alpha1.DaemonSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to retrieve DaemonSet %s: %v", name, err)
+	}
+	selector, err := metav1.LabelSelectorAsSelector(ds.Spec.Selector)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create selector for DaemonSet %s: %v", ds.Name, err)
+	}
+	accessor, err := meta.Accessor(ds)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create accessor for DaemonSet %s: %v", ds.Name, err)
+	}
+	history, err := controlledHistoryV1(apps, ds.Namespace, selector, accessor)
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to find history controlled by DaemonSet %s: %v", ds.Name, err)
+	}
+	return ds, history, nil
+}
+
 func clonesetHistory(
 	apps clientappsv1.AppsV1Interface, appsv1alpha1 kruiseclientappsv1alpha1.AppsV1alpha1Interface,
 	namespace, name string) (*kruiseappsv1alpha1.CloneSet, []*appsv1.ControllerRevision, error) {
@@ -507,6 +553,7 @@ func applyCloneSetHistory(cs *kruiseappsv1alpha1.CloneSet,
 	}
 	return result, nil
 }
+
 func applyAdvancedStatefulSetHistory(asts *kruiseappsv1beta1.StatefulSet,
 	history *appsv1.ControllerRevision) (*kruiseappsv1beta1.StatefulSet, error) {
 	astsBytes, err := json.Marshal(asts)
@@ -518,6 +565,24 @@ func applyAdvancedStatefulSetHistory(asts *kruiseappsv1beta1.StatefulSet,
 		return nil, err
 	}
 	result := &kruiseappsv1beta1.StatefulSet{}
+	err = json.Unmarshal(patched, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func applyAdvancedDaemonSetHistory(ads *kruiseappsv1alpha1.DaemonSet,
+	history *appsv1.ControllerRevision) (*kruiseappsv1alpha1.DaemonSet, error) {
+	adsBytes, err := json.Marshal(ads)
+	if err != nil {
+		return nil, err
+	}
+	patched, err := strategicpatch.StrategicMergePatch(adsBytes, history.Data.Raw, ads)
+	if err != nil {
+		return nil, err
+	}
+	result := &kruiseappsv1alpha1.DaemonSet{}
 	err = json.Unmarshal(patched, result)
 	if err != nil {
 		return nil, err

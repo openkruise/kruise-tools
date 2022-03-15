@@ -114,6 +114,7 @@ func defaultObjectRestarter(obj runtime.Object) ([]byte, error) {
 		}
 		obj.Spec.Template.ObjectMeta.Annotations["kubectl.kubernetes.io/restartedAt"] = time.Now().Format(time.RFC3339)
 		return runtime.Encode(scheme.Codecs.LegacyCodec(appsv1beta2.SchemeGroupVersion), obj)
+
 	case *kruiseappsv1alpha1.CloneSet:
 		if obj.Spec.Template.ObjectMeta.Annotations == nil {
 			obj.Spec.Template.ObjectMeta.Annotations = make(map[string]string)

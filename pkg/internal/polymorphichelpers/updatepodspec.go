@@ -39,6 +39,8 @@ func updatePodSpecForObject(obj runtime.Object, fn func(*v1.PodSpec) error) (boo
 		return true, fn(&t.Spec.Template.Spec)
 	case *kruiseappsv1beta1.StatefulSet:
 		return true, fn(&t.Spec.Template.Spec)
+	case *kruiseappsv1alpha1.DaemonSet:
+		return true, fn(&t.Spec.Template.Spec)
 	case *v1.Pod:
 		return true, fn(&t.Spec)
 		// ReplicationController

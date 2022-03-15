@@ -158,7 +158,7 @@ func (o RestartOptions) RunRestart() error {
 	}
 
 	switch infos[0].Object.(type) {
-	case *kruiseappsv1alpha1.CloneSet:
+	case *kruiseappsv1alpha1.CloneSet, *kruiseappsv1beta1.StatefulSet, *kruiseappsv1alpha1.DaemonSet:
 
 		obj, err := resource.
 			NewHelper(infos[0].Client, infos[0].Mapping).
@@ -166,37 +166,11 @@ func (o RestartOptions) RunRestart() error {
 		if err != nil {
 			return err
 		}
-		res := obj.(*kruiseappsv1alpha1.CloneSet)
-		internalpolymorphichelpers.UpdateResourceEnv(res)
+		internalpolymorphichelpers.UpdateResourceEnv(obj)
 
 		_, err = resource.
 			NewHelper(infos[0].Client, infos[0].Mapping).
-			Replace(infos[0].Namespace, infos[0].Name, true, res)
-		if err != nil {
-			return err
-		}
-		printer, err := o.ToPrinter("restarted")
-		if err != nil {
-			allErrs = append(allErrs, err)
-		}
-		if err = printer.PrintObj(infos[0].Object, o.Out); err != nil {
-			allErrs = append(allErrs, err)
-		}
-		return utilerrors.NewAggregate(allErrs)
-
-	case *kruiseappsv1beta1.StatefulSet:
-		obj, err := resource.
-			NewHelper(infos[0].Client, infos[0].Mapping).
-			Get(infos[0].Namespace, infos[0].Name)
-		if err != nil {
-			return err
-		}
-		res := obj.(*kruiseappsv1beta1.StatefulSet)
-		internalpolymorphichelpers.UpdateResourceEnv(res)
-
-		_, err = resource.
-			NewHelper(infos[0].Client, infos[0].Mapping).
-			Replace(infos[0].Namespace, infos[0].Name, true, res)
+			Replace(infos[0].Namespace, infos[0].Name, true, obj)
 		if err != nil {
 			return err
 		}
