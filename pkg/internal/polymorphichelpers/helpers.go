@@ -144,6 +144,18 @@ func SelectorsForObject(object runtime.Object) (namespace string, selector label
 		if err != nil {
 			return "", nil, fmt.Errorf("invalid label selector:%v", err)
 		}
+	case *kruiseappsv1beta1.StatefulSet:
+		namespace = t.Namespace
+		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
+		if err != nil {
+			return "", nil, fmt.Errorf("invalid label selector:%v", err)
+		}
+	case *kruiseappsv1alpha1.DaemonSet:
+		namespace = t.Namespace
+		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
+		if err != nil {
+			return "", nil, fmt.Errorf("invalid label selector:%v", err)
+		}
 	case *appsv1.DaemonSet:
 		namespace = t.Namespace
 		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
@@ -253,6 +265,11 @@ func UpdateResourceEnv(object runtime.Object) {
 		}
 
 	case *kruiseappsv1beta1.StatefulSet:
+		for i := range obj.Spec.Template.Spec.Containers {
+			tmp := &obj.Spec.Template.Spec.Containers[i]
+			tmp.Env = updateEnv(tmp.Env, addingEnvs, []string{})
+		}
+	case *kruiseappsv1alpha1.DaemonSet:
 		for i := range obj.Spec.Template.Spec.Containers {
 			tmp := &obj.Spec.Template.Spec.Containers[i]
 			tmp.Env = updateEnv(tmp.Env, addingEnvs, []string{})

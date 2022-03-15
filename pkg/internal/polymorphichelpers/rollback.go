@@ -84,6 +84,9 @@ func (v *RollbackVisitor) VisitCronJob(kind internalapps.GroupKindElement)      
 func (v *RollbackVisitor) VisitAdvancedStatefulSet(kind internalapps.GroupKindElement) {
 	v.result = &AdvancedStatefulSetRollbacker{k: v.clientset, kc: v.kruiseclientset}
 }
+func (v *RollbackVisitor) VisitAdvancedDaemonSet(kind internalapps.GroupKindElement) {
+	v.result = &AdvancedDaemonSetRollbacker{k: v.clientset, kc: v.kruiseclientset}
+}
 
 // RollbackerFor returns an implementation of Rollbacker interface for the given schema kind
 func RollbackerFor(kind schema.GroupKind, c kubernetes.Interface, kc kruiseclientsets.Interface) (Rollbacker, error) {
@@ -532,6 +535,64 @@ func (r *AdvancedStatefulSetRollbacker) Rollback(obj runtime.Object,
 	return rollbackSuccess, nil
 }
 
+type AdvancedDaemonSetRollbacker struct {
+	k  kubernetes.Interface
+	kc kruiseclientsets.Interface
+}
+
+func (r *AdvancedDaemonSetRollbacker) Rollback(obj runtime.Object,
+	updatedAnnotations map[string]string,
+	toRevision int64,
+	dryRunStrategy cmdutil.DryRunStrategy) (string, error) {
+	if toRevision < 0 {
+		return "", revisionNotFoundErr(toRevision)
+	}
+	accessor, err := meta.Accessor(obj)
+	if err != nil {
+		return "", fmt.Errorf("failed to create accessor for kind %v: %s", obj.GetObjectKind(), err.Error())
+	}
+	ads, history, err := advancedDaemonSetHistory(r.k.AppsV1(), r.kc.AppsV1alpha1(), accessor.GetNamespace(), accessor.GetName())
+	if err != nil {
+		return "", err
+	}
+	if toRevision == 0 && len(history) <= 1 {
+		return "", fmt.Errorf("no last revision to roll back to")
+	}
+
+	toHistory := findHistory(toRevision, history)
+	if toHistory == nil {
+		return "", revisionNotFoundErr(toRevision)
+	}
+
+	if dryRunStrategy == cmdutil.DryRunClient {
+		appliedDS, err := applyAdvancedDaemonSetHistory(ads, toHistory)
+		if err != nil {
+			return "", err
+		}
+		return printPodTemplate(&appliedDS.Spec.Template)
+	}
+
+	// Skip if the revision already matches current DaemonSet
+	done, err := advancedDaemonSetMatch(ads, toHistory)
+	if err != nil {
+		return "", err
+	}
+	if done {
+		return fmt.Sprintf("%s (current template already matches revision %d)", rollbackSkipped, toRevision), nil
+	}
+
+	patchOptions := metav1.PatchOptions{}
+	if dryRunStrategy == cmdutil.DryRunServer {
+		patchOptions.DryRun = []string{metav1.DryRunAll}
+	}
+	// Restore revision
+	if _, err = r.kc.AppsV1alpha1().CloneSets(ads.Namespace).Patch(context.TODO(), ads.Name, types.MergePatchType, toHistory.Data.Raw, patchOptions); err != nil {
+		return "", fmt.Errorf("failed restoring revision %d: %v", toRevision, err)
+	}
+
+	return rollbackSuccess, nil
+}
+
 var appsCodec = scheme.Codecs.LegacyCodec(appsv1.SchemeGroupVersion)
 
 // applyRevision returns a new StatefulSet constructed by restoring the state in revision to set. If the returned error
@@ -549,13 +610,13 @@ func applyRevision(set *appsv1.StatefulSet, revision *appsv1.ControllerRevision)
 	return result, nil
 }
 
-var kruiseAppsCodec = scheme.Codecs.LegacyCodec(kruiseappsv1alpha1.SchemeGroupVersion)
+var kruiseAppsv1alpha1Codec = scheme.Codecs.LegacyCodec(kruiseappsv1alpha1.SchemeGroupVersion)
 
 // applyCloneSetRevision returns a new CloneSet constructed by restoring the state in revision to set. If the returned error
 // is nil, the returned CloneSet is valid.
 func applyCloneSetRevision(cs *kruiseappsv1alpha1.CloneSet,
 	revision *appsv1.ControllerRevision) (*kruiseappsv1alpha1.CloneSet, error) {
-	patched, err := strategicpatch.StrategicMergePatch([]byte(runtime.EncodeOrDie(kruiseAppsCodec, cs)), revision.Data.Raw, cs)
+	patched, err := strategicpatch.StrategicMergePatch([]byte(runtime.EncodeOrDie(kruiseAppsv1alpha1Codec, cs)), revision.Data.Raw, cs)
 	if err != nil {
 		return nil, err
 	}
@@ -567,13 +628,13 @@ func applyCloneSetRevision(cs *kruiseappsv1alpha1.CloneSet,
 	return result, nil
 }
 
-var kruisev1beta1AppsCodec = scheme.Codecs.LegacyCodec(kruiseappsv1beta1.SchemeGroupVersion)
+var kruiseAppsv1beta1Codec = scheme.Codecs.LegacyCodec(kruiseappsv1beta1.SchemeGroupVersion)
 
 // apply  applyAdvancedStatefulSetRevision returns a new Advanced StatefulSet constructed by restoring the state in revision to set.
 // If the returned error is nil, the returned Advanced StatefulSet is valid.
 func applyAdvancedStatefulSetRevision(asts *kruiseappsv1beta1.StatefulSet,
 	revision *appsv1.ControllerRevision) (*kruiseappsv1beta1.StatefulSet, error) {
-	patched, err := strategicpatch.StrategicMergePatch([]byte(runtime.EncodeOrDie(kruisev1beta1AppsCodec, asts)), revision.Data.Raw, asts)
+	patched, err := strategicpatch.StrategicMergePatch([]byte(runtime.EncodeOrDie(kruiseAppsv1beta1Codec, asts)), revision.Data.Raw, asts)
 	if err != nil {
 		return nil, err
 	}
@@ -612,6 +673,15 @@ func cloneSetMatch(cs *kruiseappsv1alpha1.CloneSet, history *appsv1.ControllerRe
 	return bytes.Equal(patch, history.Data.Raw), nil
 }
 
+// advancedDaemonSetMatch check if the given Advanced DaemonSet's template matches the template stored in the given history.
+func advancedDaemonSetMatch(ads *kruiseappsv1alpha1.DaemonSet, history *appsv1.ControllerRevision) (bool, error) {
+	patch, err := getAdvancedDaemonSetPatch(ads)
+	if err != nil {
+		return false, err
+	}
+	return bytes.Equal(patch, history.Data.Raw), nil
+}
+
 // getStatefulSetPatch returns a strategic merge patch that can be applied to restore a StatefulSet to a
 // previous version. If the returned error is nil the patch is valid. The current state that we save is just the
 // PodSpecTemplate. We can modify this later to encompass more state (or less) and remain compatible with previously
@@ -639,7 +709,7 @@ func getStatefulSetPatch(set *appsv1.StatefulSet) ([]byte, error) {
 // getCloneSetPatch returns a strategic merge patch that can be applied to restore a CloneSet to a
 // previous version.
 func getCloneSetPatch(cs *kruiseappsv1alpha1.CloneSet) ([]byte, error) {
-	str, err := runtime.Encode(kruiseAppsCodec, cs)
+	str, err := runtime.Encode(kruiseAppsv1alpha1Codec, cs)
 	if err != nil {
 		return nil, err
 	}
@@ -662,7 +732,7 @@ func getCloneSetPatch(cs *kruiseappsv1alpha1.CloneSet) ([]byte, error) {
 // getAdvancedStatefulSetPatch returns a strategic merge patch that can be applied to restore a Advanced StatefulSet to
 // a previous version
 func getAdvancedStatefulSetPatch(asts *kruiseappsv1beta1.StatefulSet) ([]byte, error) {
-	str, err := runtime.Encode(kruisev1beta1AppsCodec, asts)
+	str, err := runtime.Encode(kruiseAppsv1beta1Codec, asts)
 	if err != nil {
 		return nil, err
 	}
@@ -672,6 +742,27 @@ func getAdvancedStatefulSetPatch(asts *kruiseappsv1beta1.StatefulSet) ([]byte, e
 	}
 	objCopy := make(map[string]interface{})
 	specCopy := make(map[string]interface{})
+	spec := raw["spec"].(map[string]interface{})
+	template := spec["template"].(map[string]interface{})
+	specCopy["template"] = template
+	template["$patch"] = "replace"
+	objCopy["spec"] = specCopy
+	patch, err := json.Marshal(objCopy)
+	return patch, err
+}
+
+func getAdvancedDaemonSetPatch(ads *kruiseappsv1alpha1.DaemonSet) ([]byte, error) {
+	str, err := runtime.Encode(kruiseAppsv1alpha1Codec, ads)
+	if err != nil {
+		return nil, err
+	}
+	var raw map[string]interface{}
+	if err := json.Unmarshal(str, &raw); err != nil {
+		return nil, err
+	}
+	objCopy := make(map[string]interface{})
+	specCopy := make(map[string]interface{})
+	// Create a patch of the DaemonSet that replaces spec.template
 	spec := raw["spec"].(map[string]interface{})
 	template := spec["template"].(map[string]interface{})
 	specCopy["template"] = template
