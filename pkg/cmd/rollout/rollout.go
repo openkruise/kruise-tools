@@ -45,6 +45,8 @@ var (
 			* daemonsets
 			* statefulsets
 			* clonesets
+			* statefulsets.apps.kruise.io
+			* daemonsets.apps.kruise.io
 		`)
 )
 

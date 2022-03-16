@@ -64,7 +64,7 @@ type SetImageOptions struct {
 
 var (
 	imageResources = `
-  	pod (po), replicationcontroller (rc), deployment (deploy), daemonset (ds), replicaset (rs), cloneset(cs)`
+  	pod (po), deployment (deploy), statefulset (sts), daemonset (ds), replicaset (rs), cloneset (clone), statefulset.apps.kruise.io (asts), daemonset.apps.kruise.io (ads)`
 
 	imageLong = templates.LongDesc(`
 		Update existing container image(s) of resources.
