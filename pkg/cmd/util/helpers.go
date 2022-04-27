@@ -17,11 +17,16 @@ limitations under the License.
 package util
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/klog/v2"
 )
 
@@ -69,4 +74,19 @@ func CheckErr(err error) {
 
 func AddFieldManagerFlagVar(cmd *cobra.Command, p *string, defaultFieldManager string) {
 	cmd.Flags().StringVar(p, "field-manager", defaultFieldManager, "Name of the manager used to track field ownership.")
+}
+
+func PatchSubResource(RESTClient resource.RESTClient, resource, subResource, namespace, name string, namespaceScoped bool, pt types.PatchType, data []byte, options *metav1.PatchOptions) (runtime.Object, error) {
+	if options == nil {
+		options = &metav1.PatchOptions{}
+	}
+	return RESTClient.Patch(pt).
+		NamespaceIfScoped(namespace, namespaceScoped).
+		Resource(resource).
+		SubResource(subResource).
+		Name(name).
+		VersionedParams(options, metav1.ParameterCodec).
+		Body(data).
+		Do(context.TODO()).
+		Get()
 }

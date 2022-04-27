@@ -95,10 +95,18 @@ var ObjectPauserFn ObjectPauserFunc = defaultObjectPauser
 // ObjectResumerFunc is a function type that marks the object in a given info as resumed.
 type ObjectResumerFunc func(runtime.Object) ([]byte, error)
 
+// ObjectApproverFunc is a function type that marks the object in a given info as approved.
+type ObjectApproverFunc func(runtime.Object) ([]byte, error)
+
 // ObjectResumerFn gives a way to easily override the function for unit testing if needed.
 // Returns the patched object in bytes and any error that occurred during the encoding or
 // in case the object is already resumed.
 var ObjectResumerFn ObjectResumerFunc = defaultObjectResumer
+
+// ObjectApproverFn gives a way to easily override the function for unit testing if needed.
+// Returns the patched object in bytes and any error that occurred during the encoding or
+// in case the object is already approved.
+var ObjectApproverFn ObjectApproverFunc = defaultObjectApprover
 
 // RollbackerFunc gives a way to change the rollback version of the specified RESTMapping type
 type RollbackerFunc func(restClientGetter genericclioptions.RESTClientGetter, mapping *meta.RESTMapping) (Rollbacker, error)
