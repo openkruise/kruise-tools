@@ -275,7 +275,7 @@ func (o *EnvOptions) Validate() error {
 
 // RunEnv contains all the necessary functionality for the OpenShift cli env command
 func (o *EnvOptions) RunEnv() error {
-	env, remove, err := envutil.ParseEnv(append(o.EnvParams, o.envArgs...), o.In)
+	env, remove, _, err := envutil.ParseEnv(append(o.EnvParams, o.envArgs...), o.In)
 
 	if err != nil {
 		return err

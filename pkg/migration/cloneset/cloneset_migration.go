@@ -99,10 +99,10 @@ func NewControl(cfg *rest.Config, stopChan <-chan struct{}) (migration.Control, 
 	}
 
 	go func() {
-		_ = ctrl.cache.Start(stopChan)
+		_ = ctrl.cache.Start(context.TODO())
 	}()
 	// Wait for the caches to sync.
-	ctrl.cache.WaitForCacheSync(stopChan)
+	ctrl.cache.WaitForCacheSync(context.TODO())
 
 	for i := 0; i < maxConcurrentReconciles; i++ {
 		// Process work items

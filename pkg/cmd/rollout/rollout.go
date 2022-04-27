@@ -47,6 +47,7 @@ var (
 			* clonesets
 			* statefulsets.apps.kruise.io
 			* daemonsets.apps.kruise.io
+			* rollouts.rollouts.kruise.io
 		`)
 )
 
@@ -67,6 +68,7 @@ func NewCmdRollout(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobr
 	cmd.AddCommand(NewCmdRolloutUndo(f, streams))
 	cmd.AddCommand(NewCmdRolloutStatus(f, streams))
 	cmd.AddCommand(NewCmdRolloutRestart(f, streams))
+	cmd.AddCommand(NewCmdRolloutApprove(f, streams))
 
 	return cmd
 }

@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
+	kruiserolloutsv1apha1 "github.com/openkruise/rollouts/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -30,6 +31,7 @@ import (
 	"k8s.io/kubectl/pkg/scheme"
 )
 
+// Currently supports Deployments, CloneSet and Kruise Rollout.
 func defaultObjectResumer(obj runtime.Object) ([]byte, error) {
 	switch obj := obj.(type) {
 	case *extensionsv1beta1.Deployment:
@@ -59,12 +61,20 @@ func defaultObjectResumer(obj runtime.Object) ([]byte, error) {
 		}
 		obj.Spec.Paused = false
 		return runtime.Encode(scheme.Codecs.LegacyCodec(appsv1beta1.SchemeGroupVersion), obj)
+
 	case *kruiseappsv1alpha1.CloneSet:
 		if !obj.Spec.UpdateStrategy.Paused {
 			return nil, errors.New("is not paused")
 		}
 		obj.Spec.UpdateStrategy.Paused = false
 		return runtime.Encode(scheme.Codecs.LegacyCodec(kruiseappsv1alpha1.SchemeGroupVersion), obj)
+
+	case *kruiserolloutsv1apha1.Rollout:
+		if !obj.Spec.Strategy.Paused {
+			return nil, errors.New("is not paused")
+		}
+		obj.Spec.Strategy.Paused = false
+		return runtime.Encode(scheme.Codecs.LegacyCodec(kruiserolloutsv1apha1.SchemeGroupVersion), obj)
 
 	default:
 		return nil, fmt.Errorf("resuming is not supported")

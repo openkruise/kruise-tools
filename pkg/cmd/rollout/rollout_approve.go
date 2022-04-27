@@ -20,8 +20,8 @@ import (
 	"fmt"
 
 	internalapi "github.com/openkruise/kruise-tools/pkg/api"
+	"github.com/openkruise/kruise-tools/pkg/cmd/util"
 	internalpolymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
-
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -35,16 +35,16 @@ import (
 	"k8s.io/kubectl/pkg/util/templates"
 )
 
-// ResumeOptions is the start of the data required to perform the operation.  As new fields are added, add them here instead of
+// ApproveOptions is the start of the data required to perform the operation.  As new fields are added, add them here instead of
 // referencing the cmd.Flags()
-type ResumeOptions struct {
+type ApproveOptions struct {
 	PrintFlags *genericclioptions.PrintFlags
 	ToPrinter  func(string) (printers.ResourcePrinter, error)
 
 	Resources []string
 
 	Builder          func() *resource.Builder
-	Resumer          internalpolymorphichelpers.ObjectResumerFunc
+	Approver         internalpolymorphichelpers.ObjectApproverFunc
 	Namespace        string
 	EnforceNamespace bool
 
@@ -53,47 +53,42 @@ type ResumeOptions struct {
 }
 
 var (
-	resumeLong = templates.LongDesc(`
-		Resume a paused resource
+	ApproveLong = templates.LongDesc(`
+		Approve a resource which can be continued.
 
-		Paused resources will not be reconciled by a controller. By resuming a
-		resource, we allow it to be reconciled again.
-		Currently deployments, cloneset support being resumed.`)
+		Paused resources will not be reconciled by a controller. By approving a
+		resource, we allow it to be continue to rollout.
+		Currently only kruise-rollouts support being approved.`)
 
-	resumeExample = templates.Examples(`
-		# Resume an already paused rollout/cloneset/deployment resource
+	ApproveExample = templates.Examples(`
+		# approve a kruise rollout resource named "rollout-demo" in "ns-demo" namespace
 		
-		kubectl-kruise rollout resume rollout/nginx
-		kubectl-kruise rollout resume cloneset/nginx
-		kubectl-kruise rollout resume deployment/nginx`)
+		kubectl-kruise rollout approve rollout-demo -n ns-demo`)
 )
 
-// NewRolloutResumeOptions returns an initialized ResumeOptions instance
-func NewRolloutResumeOptions(streams genericclioptions.IOStreams) *ResumeOptions {
-	return &ResumeOptions{
-		PrintFlags: genericclioptions.NewPrintFlags("resumed").WithTypeSetter(internalapi.GetScheme()),
+// NewRolloutApproveOptions returns an initialized ApproveOptions instance
+func NewRolloutApproveOptions(streams genericclioptions.IOStreams) *ApproveOptions {
+	return &ApproveOptions{
+		PrintFlags: genericclioptions.NewPrintFlags("approved").WithTypeSetter(internalapi.GetScheme()),
 		IOStreams:  streams,
 	}
 }
 
-// NewCmdRolloutResume returns a Command instance for 'rollout resume' sub command
-func NewCmdRolloutResume(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
-	o := NewRolloutResumeOptions(streams)
-
-	validArgs := []string{"deployment", "cloneset", "rollout"}
+// NewCmdRolloutApprove returns a Command instance for 'rollout approve' sub command
+func NewCmdRolloutApprove(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	o := NewRolloutApproveOptions(streams)
 
 	cmd := &cobra.Command{
-		Use:                   "resume RESOURCE",
+		Use:                   "approve RESOURCE",
 		DisableFlagsInUseLine: true,
-		Short:                 i18n.T("Resume a paused resource"),
-		Long:                  resumeLong,
-		Example:               resumeExample,
+		Short:                 i18n.T("Approve a resource"),
+		Long:                  ApproveLong,
+		Example:               ApproveExample,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(o.Complete(f, cmd, args))
 			cmdutil.CheckErr(o.Validate())
-			cmdutil.CheckErr(o.RunResume())
+			cmdutil.CheckErr(o.RunApprove())
 		},
-		ValidArgs: validArgs,
 	}
 
 	usage := "identifying the resource to get from a server."
@@ -103,10 +98,10 @@ func NewCmdRolloutResume(f cmdutil.Factory, streams genericclioptions.IOStreams)
 }
 
 // Complete completes all the required options
-func (o *ResumeOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []string) error {
+func (o *ApproveOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []string) error {
 	o.Resources = args
 
-	o.Resumer = internalpolymorphichelpers.ObjectResumerFn
+	o.Approver = internalpolymorphichelpers.ObjectApproverFn
 
 	var err error
 	o.Namespace, o.EnforceNamespace, err = f.ToRawKubeConfigLoader().Namespace()
@@ -124,15 +119,15 @@ func (o *ResumeOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []s
 	return nil
 }
 
-func (o *ResumeOptions) Validate() error {
+func (o *ApproveOptions) Validate() error {
 	if len(o.Resources) == 0 && cmdutil.IsFilenameSliceEmpty(o.Filenames, o.Kustomize) {
 		return fmt.Errorf("required resource not specified")
 	}
 	return nil
 }
 
-// RunResume performs the execution of 'rollout resume' sub command
-func (o ResumeOptions) RunResume() error {
+// RunApprove performs the execution of 'rollout approve' sub command
+func (o ApproveOptions) RunApprove() error {
 	r := o.Builder().
 		WithScheme(internalapi.GetScheme(), scheme.Scheme.PrioritizedVersionsAllGroups()...).
 		NamespaceParam(o.Namespace).DefaultNamespace().
@@ -157,7 +152,7 @@ func (o ResumeOptions) RunResume() error {
 		allErrs = append(allErrs, err)
 	}
 
-	for _, patch := range set.CalculatePatches(infos, scheme.DefaultJSONEncoder(), set.PatchFn(o.Resumer)) {
+	for _, patch := range set.CalculatePatches(infos, scheme.DefaultJSONEncoder(), set.PatchFn(o.Approver)) {
 		info := patch.Info
 
 		if patch.Err != nil {
@@ -170,7 +165,7 @@ func (o ResumeOptions) RunResume() error {
 		}
 
 		if string(patch.Patch) == "{}" || len(patch.Patch) == 0 {
-			printer, err := o.ToPrinter("already resumed")
+			printer, err := o.ToPrinter("already approved")
 			if err != nil {
 				allErrs = append(allErrs, err)
 				continue
@@ -181,14 +176,14 @@ func (o ResumeOptions) RunResume() error {
 			continue
 		}
 
-		obj, err := resource.NewHelper(info.Client, info.Mapping).Patch(info.Namespace, info.Name, types.MergePatchType, patch.Patch, nil)
+		obj, err := util.PatchSubResource(info.Client, info.Mapping.Resource.Resource, "status", info.Namespace, info.Name, info.Namespaced(), types.MergePatchType, patch.Patch, nil)
 		if err != nil {
 			allErrs = append(allErrs, fmt.Errorf("failed to patch: %v", err))
 			continue
 		}
 
 		info.Refresh(obj, true)
-		printer, err := o.ToPrinter("resumed")
+		printer, err := o.ToPrinter("approved")
 		if err != nil {
 			allErrs = append(allErrs, err)
 			continue
