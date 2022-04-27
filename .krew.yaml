@@ -5,61 +5,61 @@ metadata:
 spec:
   version: "{{ .TagName }}"
   platforms:
-    - selector:
-        matchLabels:
-          os: linux
-          arch: amd64
-      {{addURIAndSha "https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-linux-amd64.tar.gz" .TagName }}
-      files:
-        - from: "*/kubectl-kruise"
-          to: "."
-        - from: "*/LICENSE"
-          to: "."
-      bin: "kubectl-kruise"
-    - selector:
-        matchLabels:
-          os: linux
-          arch: arm64
-      {{addURIAndSha "https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-linux-arm64.tar.gz" .TagName }}
-      files:
-        - from: "*/kubectl-kruise"
-          to: "."
-        - from: "*/LICENSE"
-          to: "."
-      bin: "kubectl-kruise"
-    - selector:
-        matchLabels:
-          os: darwin
-          arch: amd64
-      {{addURIAndSha "https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-darwin-amd64.tar.gz" .TagName }}
-      files:
-        - from: "*/kubectl-kruise"
-          to: "."
-        - from: "*/LICENSE"
-          to: "."
-      bin: "kubectl-kruise"
-    - selector:
-        matchLabels:
-          os: darwin
-          arch: arm64
-      {{addURIAndSha "https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-darwin-arm64.tar.gz" .TagName }}
-      files:
-        - from: "*/kubectl-kruise"
-          to: "."
-        - from: "*/LICENSE"
-          to: "."
-      bin: "kubectl-kruise"
-    - selector:
-        matchLabels:
-          os: windows
-          arch: amd64
-      {{addURIAndSha "https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-windows-amd64.tar.gz" .TagName }}
-      files:
-        - from: "*/kubectl-kruise"
-          to: "."
-        - from: "*/LICENSE"
-          to: "."
-      bin: "kubectl-kruise"
+  - selector:
+      matchLabels:
+        os: linux
+        arch: amd64
+    {{addURIAndSha "https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-linux-amd64.tar.gz" .TagName }}
+    files:
+      - from: "*/kubectl-kruise"
+        to: "."
+      - from: "*/LICENSE"
+        to: "."
+    bin: "kubectl-kruise"
+  - selector:
+      matchLabels:
+        os: linux
+        arch: arm64
+    {{addURIAndSha "https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-linux-arm64.tar.gz" .TagName }}
+    files:
+      - from: "*/kubectl-kruise"
+        to: "."
+      - from: "*/LICENSE"
+        to: "."
+    bin: "kubectl-kruise"
+  - selector:
+      matchLabels:
+        os: darwin
+        arch: amd64
+    {{addURIAndSha "https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-darwin-amd64.tar.gz" .TagName }}
+    files:
+      - from: "*/kubectl-kruise"
+        to: "."
+      - from: "*/LICENSE"
+        to: "."
+    bin: "kubectl-kruise"
+  - selector:
+      matchLabels:
+        os: darwin
+        arch: arm64
+    {{addURIAndSha "https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-darwin-arm64.tar.gz" .TagName }}
+    files:
+      - from: "*/kubectl-kruise"
+        to: "."
+      - from: "*/LICENSE"
+        to: "."
+    bin: "kubectl-kruise"
+  - selector:
+      matchLabels:
+        os: windows
+        arch: amd64
+    {{addURIAndSha "https://github.com/openkruise/kruise-tools/releases/download/{{ .TagName }}/kubectl-kruise-windows-amd64.tar.gz" .TagName }}
+    files:
+      - from: "*/kubectl-kruise"
+        to: "."
+      - from: "*/LICENSE"
+        to: "."
+    bin: "kubectl-kruise"
   shortDescription: Easily handle OpenKruise workloads
   homepage: https://openkruise.io/
   description: |

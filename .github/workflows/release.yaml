@@ -94,4 +94,4 @@ jobs:
           asset_name: sha256sums.txt
           asset_content_type: text/plain
       - name: Update kubectl plugin version in krew-index
-        uses: rajatjindal/krew-release-bot@v0.0.40
+        uses: rajatjindal/krew-release-bot@v0.0.43
