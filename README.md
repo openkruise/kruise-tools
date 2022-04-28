@@ -37,6 +37,13 @@ $ kubectl-kruise --help
 $ kubectl kruise --help
 ```
 
+## Upgrade
+### Upgrade via krew
+Run `kubectl krew upgrade kruise` to upgrade kruise plugin via Krew.
+
+### Upgrade manually
+Same to `install manually`.
+
 ## Usage
 
 ### expose
@@ -59,7 +66,7 @@ It equals to `kubectl scale --replicas=3 cloneset nginx`.
 
 ### rollout
 
-Available commands: `history`, `pause`, `restart`, `resume`, `status`, `undo`.
+Available commands: `history`, `pause`, `restart`, `resume`, `status`, `undo`, `approve`.
 
 ```bash
 $ kubectl kruise rollout undo cloneset/nginx
@@ -69,6 +76,9 @@ $ kubectl kruise rollout status statefulsets/sts1
 
 # kruise statefulsets
 $ kubectl kruise rollout status statefulsets.apps.kruise.io/sts2
+
+# approve a kruise rollout resource named "rollout-demo" in "ns-demo" namespace
+$ kubectl-kruise rollout approve rollout-demo -n ns-demo`
 ```
 
 ### set
