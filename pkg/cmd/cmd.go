@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/openkruise/kruise-tools/pkg/cmd/create"
 	cmdexec "github.com/openkruise/kruise-tools/pkg/cmd/exec"
 	"github.com/openkruise/kruise-tools/pkg/cmd/expose"
 	"github.com/openkruise/kruise-tools/pkg/cmd/migrate"
@@ -28,6 +29,7 @@ import (
 	"github.com/openkruise/kruise-tools/pkg/cmd/scaledown"
 	kset "github.com/openkruise/kruise-tools/pkg/cmd/set"
 	"github.com/spf13/cobra"
+
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/tools/clientcmd"
@@ -368,6 +370,7 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 		{
 			Message: "Basic Commands:",
 			Commands: []*cobra.Command{
+				create.NewCmdCreate(f, ioStreams),
 				expose.NewCmdExposeService(f, ioStreams),
 				cmdWithShortOverwrite(scale.NewCmdScale(f, ioStreams), "Set a new size for a Deployment, ReplicaSet, CloneSet, or Advanced StatefulSet"),
 			},
