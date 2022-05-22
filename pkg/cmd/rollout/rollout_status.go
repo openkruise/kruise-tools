@@ -35,6 +35,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
@@ -81,6 +82,7 @@ type RolloutStatusOptions struct {
 	StatusViewerFn func(*meta.RESTMapping) (internalpolymorphichelpers.StatusViewer, error)
 	Builder        func() *resource.Builder
 	DynamicClient  dynamic.Interface
+	ClientSet      kubernetes.Interface
 
 	FilenameOptions *resource.FilenameOptions
 	genericclioptions.IOStreams
@@ -145,6 +147,11 @@ func (o *RolloutStatusOptions) Complete(f cmdutil.Factory, args []string) error 
 	}
 
 	o.DynamicClient, err = dynamic.NewForConfig(clientConfig)
+	if err != nil {
+		return err
+	}
+
+	o.ClientSet, err = kubernetes.NewForConfig(clientConfig)
 	if err != nil {
 		return err
 	}
@@ -228,7 +235,7 @@ func (o *RolloutStatusOptions) Run() error {
 		_, err = watchtools.UntilWithSync(ctx, lw, &unstructured.Unstructured{}, preconditionFunc, func(e watch.Event) (bool, error) {
 			switch t := e.Type; t {
 			case watch.Added, watch.Modified:
-				status, done, err := statusViewer.Status(e.Object.(runtime.Unstructured), o.Revision)
+				status, done, err := statusViewer.Status(o.ClientSet, e.Object.(runtime.Unstructured), o.Revision)
 				if err != nil {
 					return false, err
 				}

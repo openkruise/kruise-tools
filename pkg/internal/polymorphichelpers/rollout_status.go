@@ -18,21 +18,26 @@ limitations under the License.
 package polymorphichelpers
 
 import (
+	"context"
 	"fmt"
 
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/kubernetes"
 	deploymentutil "k8s.io/kubectl/pkg/util/deployment"
 )
 
 // StatusViewer provides an interface for resources that have rollout status.
 type StatusViewer interface {
-	Status(obj runtime.Unstructured, revision int64) (string, bool, error)
+	Status(c kubernetes.Interface, obj runtime.Unstructured, revision int64) (string, bool, error)
 }
 
 // StatusViewerFor returns a StatusViewer for the resource specified by kind.
@@ -71,7 +76,7 @@ type CloneSetStatusViewer struct{}
 type AdvancedStatefulSetStatusViewer struct{}
 
 // Status returns a message describing deployment status, and a bool value indicating if the status is considered done.
-func (s *DeploymentStatusViewer) Status(obj runtime.Unstructured, revision int64) (string, bool, error) {
+func (s *DeploymentStatusViewer) Status(c kubernetes.Interface, obj runtime.Unstructured, revision int64) (string, bool, error) {
 	deployment := &appsv1.Deployment{}
 	err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), deployment)
 	if err != nil {
@@ -107,7 +112,7 @@ func (s *DeploymentStatusViewer) Status(obj runtime.Unstructured, revision int64
 }
 
 // Status returns a message describing daemon set status, and a bool value indicating if the status is considered done.
-func (s *DaemonSetStatusViewer) Status(obj runtime.Unstructured, revision int64) (string, bool, error) {
+func (s *DaemonSetStatusViewer) Status(c kubernetes.Interface, obj runtime.Unstructured, revision int64) (string, bool, error) {
 	//ignoring revision as DaemonSets does not have history yet
 
 	daemon := &appsv1.DaemonSet{}
@@ -132,7 +137,7 @@ func (s *DaemonSetStatusViewer) Status(obj runtime.Unstructured, revision int64)
 }
 
 // Status returns a message describing statefulset status, and a bool value indicating if the status is considered done.
-func (s *StatefulSetStatusViewer) Status(obj runtime.Unstructured, revision int64) (string, bool, error) {
+func (s *StatefulSetStatusViewer) Status(c kubernetes.Interface, obj runtime.Unstructured, revision int64) (string, bool, error) {
 	sts := &appsv1.StatefulSet{}
 	err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), sts)
 	if err != nil {
@@ -167,7 +172,7 @@ func (s *StatefulSetStatusViewer) Status(obj runtime.Unstructured, revision int6
 }
 
 // Status returns a message describing cloneset status, and a bool value indicating if the status is considered done.
-func (s *CloneSetStatusViewer) Status(obj runtime.Unstructured, revision int64) (string, bool, error) {
+func (s *CloneSetStatusViewer) Status(c kubernetes.Interface, obj runtime.Unstructured, revision int64) (string, bool, error) {
 	cs := &kruiseappsv1alpha1.CloneSet{}
 	err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), cs)
 	if err != nil {
@@ -179,25 +184,26 @@ func (s *CloneSetStatusViewer) Status(obj runtime.Unstructured, revision int64) 
 		cs.Spec.UpdateStrategy.Type == kruiseappsv1alpha1.InPlaceIfPossibleCloneSetUpdateStrategyType {
 		if cs.Spec.Replicas != nil && cs.Spec.UpdateStrategy.Partition != nil {
 			if cs.Status.UpdatedReplicas < (*cs.Spec.Replicas - cs.Spec.UpdateStrategy.Partition.IntVal) {
-				return fmt.Sprintf("Waiting for partitioned roll out to finish: %d out of %d new pods have been updated...\n",
-					cs.Status.UpdatedReplicas, *cs.Spec.Replicas-cs.Spec.UpdateStrategy.Partition.IntVal), false, nil
-
+				return fmt.Sprintf("CloneSet %s Waiting for partitioned roll out to finish: %d out of %d new pods have been updated...\n%s",
+					cs.Name, cs.Status.UpdatedReplicas, *cs.Spec.Replicas-cs.Spec.UpdateStrategy.Partition.IntVal, generatePodsInfoForCloneSet(c, cs)), false, nil
 			}
 		}
 	}
 
 	if cs.Status.ObservedGeneration == 0 || cs.Generation > cs.Status.ObservedGeneration {
-		return "Waiting for CloneSet spec update to be observed...\n", false, nil
+		return fmt.Sprintf("Waiting for CloneSet %s spec update to be observed...\n", cs.Name), false, nil
 	}
 	if cs.Spec.Replicas != nil && cs.Status.ReadyReplicas < *cs.Spec.Replicas {
-		return fmt.Sprintf("Waiting for %d pods to be ready...\n", *cs.Spec.Replicas-cs.Status.ReadyReplicas), false, nil
+		return fmt.Sprintf("Waiting for %d pods to be ready...\n%s", *cs.Spec.Replicas-cs.Status.ReadyReplicas,
+			generatePodsInfoForCloneSet(c, cs)), false, nil
 	}
 
-	return fmt.Sprintf("CloneSet rolling update complete %d pods at revision %s...\n", cs.Status.AvailableReplicas, cs.Status.UpdateRevision), true, nil
+	return fmt.Sprintf("CloneSet %s rolling update complete %d pods at revision %s...\n%s",
+		cs.Name, cs.Status.AvailableReplicas, cs.Status.UpdateRevision, generatePodsInfoForCloneSet(c, cs)), true, nil
 }
 
 // Status returns a message describing advanced statefulset status, and a bool value indicating if the status is considered done.
-func (s *AdvancedStatefulSetStatusViewer) Status(obj runtime.Unstructured, revision int64) (string, bool, error) {
+func (s *AdvancedStatefulSetStatusViewer) Status(c kubernetes.Interface, obj runtime.Unstructured, revision int64) (string, bool, error) {
 	asts := &kruiseappsv1beta1.StatefulSet{}
 	err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), asts)
 	if err != nil {
@@ -223,4 +229,66 @@ func (s *AdvancedStatefulSetStatusViewer) Status(obj runtime.Unstructured, revis
 	}
 	return fmt.Sprintf("Advanced StatefulSet rolling update complete %d pods at revision %s...\n", asts.Status.AvailableReplicas, asts.Status.UpdateRevision), true, nil
 
+}
+
+func getPodsByLabelSelector(client kubernetes.Interface, ns string, labelSelector *metav1.LabelSelector) ([]*corev1.Pod, error) {
+	var podsList []*corev1.Pod
+	pods, err := client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()})
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range pods.Items {
+		podsList = append(podsList, &pods.Items[i])
+	}
+
+	return podsList, nil
+}
+
+func filterOldNewReadyPodsFromCloneSet(client kubernetes.Interface, clone *kruiseappsv1alpha1.CloneSet) (oldPods []*corev1.Pod,
+	newNotReadyPods []*corev1.Pod, updatedReadyPods []*corev1.Pod, err error) {
+	pods, err := getPodsByLabelSelector(client, clone.Namespace, clone.Spec.Selector)
+	if err != nil {
+		return
+	}
+
+	for i := range pods {
+		if podRevision, ok := pods[i].GetLabels()["controller-revision-hash"]; ok {
+			if podRevision == clone.Status.UpdateRevision {
+				if podReady(pods[i]) {
+					updatedReadyPods = append(updatedReadyPods, pods[i])
+				} else {
+					newNotReadyPods = append(newNotReadyPods, pods[i])
+				}
+			} else {
+				oldPods = append(oldPods, pods[i])
+			}
+		}
+	}
+	return
+}
+func podReady(p *corev1.Pod) bool {
+	cs := p.Status.Conditions
+	for _, c := range cs {
+		if c.Type == corev1.PodReady {
+			return c.Status == corev1.ConditionTrue
+		}
+	}
+	return false
+}
+
+func generatePodsInfoForCloneSet(client kubernetes.Interface, clone *kruiseappsv1alpha1.CloneSet) string {
+	var notReadyPodsSlice, ReadyPodsSlice []string
+	_, notReadyNewPods, readyNewPods, err := filterOldNewReadyPodsFromCloneSet(client, clone)
+	if err != nil {
+		return ""
+	}
+	for i := range notReadyNewPods {
+		notReadyPodsSlice = append(notReadyPodsSlice, notReadyNewPods[i].Name)
+	}
+	for j := range readyNewPods {
+		ReadyPodsSlice = append(ReadyPodsSlice, readyNewPods[j].Name)
+	}
+
+	return fmt.Sprintf("Updated ready pods: %v\nUpdated not ready pods: %v\n", ReadyPodsSlice, notReadyPodsSlice)
 }
