@@ -78,6 +78,7 @@ type RolloutStatusOptions struct {
 	Watch    bool
 	Revision int64
 	Timeout  time.Duration
+	Detail   bool
 
 	StatusViewerFn func(*meta.RESTMapping) (internalpolymorphichelpers.StatusViewer, error)
 	Builder        func() *resource.Builder
@@ -96,6 +97,7 @@ func NewRolloutStatusOptions(streams genericclioptions.IOStreams) *RolloutStatus
 		IOStreams:       streams,
 		Watch:           true,
 		Timeout:         0,
+		Detail:          false,
 	}
 }
 
@@ -124,6 +126,7 @@ func NewCmdRolloutStatus(f cmdutil.Factory, streams genericclioptions.IOStreams)
 	cmd.Flags().BoolVarP(&o.Watch, "watch", "w", o.Watch, "Watch the status of the rollout until it's done.")
 	cmd.Flags().Int64Var(&o.Revision, "revision", o.Revision, "Pin to a specific revision for showing its status. Defaults to 0 (last revision).")
 	cmd.Flags().DurationVar(&o.Timeout, "timeout", o.Timeout, "The length of time to wait before ending watch, zero means never. Any other values should contain a corresponding time unit (e.g. 1s, 2m, 3h).")
+	cmd.Flags().BoolVarP(&o.Detail, "detail", "d", o.Detail, "Show the detail status of the rollout.")
 
 	return cmd
 }
@@ -231,17 +234,23 @@ func (o *RolloutStatusOptions) Run() error {
 	// if the rollout isn't done yet, keep watching deployment status
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), o.Timeout)
 	intr := interrupt.New(nil, cancel)
+	var status string
+	var consideredDone bool
 	return intr.Run(func() error {
 		_, err = watchtools.UntilWithSync(ctx, lw, &unstructured.Unstructured{}, preconditionFunc, func(e watch.Event) (bool, error) {
 			switch t := e.Type; t {
 			case watch.Added, watch.Modified:
-				status, done, err := statusViewer.Status(o.ClientSet, e.Object.(runtime.Unstructured), o.Revision)
+				if o.Detail {
+					status, consideredDone, err = statusViewer.DetailStatus(o.ClientSet, e.Object.(runtime.Unstructured), o.Detail, o.Revision)
+				} else {
+					status, consideredDone, err = statusViewer.Status(o.ClientSet, e.Object.(runtime.Unstructured), o.Revision)
+				}
 				if err != nil {
 					return false, err
 				}
 				fmt.Fprintf(o.Out, "%s", status)
 				// Quit waiting if the rollout is done
-				if done {
+				if consideredDone {
 					return true, nil
 				}
 
