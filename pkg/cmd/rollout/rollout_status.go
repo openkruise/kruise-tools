@@ -35,6 +35,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
@@ -77,10 +78,12 @@ type RolloutStatusOptions struct {
 	Watch    bool
 	Revision int64
 	Timeout  time.Duration
+	Detail   bool
 
 	StatusViewerFn func(*meta.RESTMapping) (internalpolymorphichelpers.StatusViewer, error)
 	Builder        func() *resource.Builder
 	DynamicClient  dynamic.Interface
+	ClientSet      kubernetes.Interface
 
 	FilenameOptions *resource.FilenameOptions
 	genericclioptions.IOStreams
@@ -94,6 +97,7 @@ func NewRolloutStatusOptions(streams genericclioptions.IOStreams) *RolloutStatus
 		IOStreams:       streams,
 		Watch:           true,
 		Timeout:         0,
+		Detail:          false,
 	}
 }
 
@@ -122,6 +126,7 @@ func NewCmdRolloutStatus(f cmdutil.Factory, streams genericclioptions.IOStreams)
 	cmd.Flags().BoolVarP(&o.Watch, "watch", "w", o.Watch, "Watch the status of the rollout until it's done.")
 	cmd.Flags().Int64Var(&o.Revision, "revision", o.Revision, "Pin to a specific revision for showing its status. Defaults to 0 (last revision).")
 	cmd.Flags().DurationVar(&o.Timeout, "timeout", o.Timeout, "The length of time to wait before ending watch, zero means never. Any other values should contain a corresponding time unit (e.g. 1s, 2m, 3h).")
+	cmd.Flags().BoolVarP(&o.Detail, "detail", "d", o.Detail, "Show the detail status of the rollout.")
 
 	return cmd
 }
@@ -145,6 +150,11 @@ func (o *RolloutStatusOptions) Complete(f cmdutil.Factory, args []string) error 
 	}
 
 	o.DynamicClient, err = dynamic.NewForConfig(clientConfig)
+	if err != nil {
+		return err
+	}
+
+	o.ClientSet, err = kubernetes.NewForConfig(clientConfig)
 	if err != nil {
 		return err
 	}
@@ -224,17 +234,23 @@ func (o *RolloutStatusOptions) Run() error {
 	// if the rollout isn't done yet, keep watching deployment status
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), o.Timeout)
 	intr := interrupt.New(nil, cancel)
+	var status string
+	var consideredDone bool
 	return intr.Run(func() error {
 		_, err = watchtools.UntilWithSync(ctx, lw, &unstructured.Unstructured{}, preconditionFunc, func(e watch.Event) (bool, error) {
 			switch t := e.Type; t {
 			case watch.Added, watch.Modified:
-				status, done, err := statusViewer.Status(e.Object.(runtime.Unstructured), o.Revision)
+				if o.Detail {
+					status, consideredDone, err = statusViewer.DetailStatus(o.ClientSet, e.Object.(runtime.Unstructured), o.Detail, o.Revision)
+				} else {
+					status, consideredDone, err = statusViewer.Status(o.ClientSet, e.Object.(runtime.Unstructured), o.Revision)
+				}
 				if err != nil {
 					return false, err
 				}
 				fmt.Fprintf(o.Out, "%s", status)
 				// Quit waiting if the rollout is done
-				if done {
+				if consideredDone {
 					return true, nil
 				}
 
