@@ -140,6 +140,7 @@ func NewCmdCreate(f cmdutil.Factory, ioStreams genericclioptions.IOStreams) *cob
 	// create subcommands
 	cmd.AddCommand(NewCmdCreateJob(f, ioStreams))
 	cmd.AddCommand(NewCmdCreateBroadcastJob(f, ioStreams))
+	cmd.AddCommand(NewCmdCreateCRR(f, ioStreams))
 	return cmd
 }
 
