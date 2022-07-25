@@ -28,6 +28,7 @@ require (
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/klog/v2 v2.9.0
 	k8s.io/kubectl v0.21.6
+	k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a // indirect
 	sigs.k8s.io/controller-runtime v0.10.3
 	sigs.k8s.io/structured-merge-diff/v3 v3.0.0 // indirect
 )
