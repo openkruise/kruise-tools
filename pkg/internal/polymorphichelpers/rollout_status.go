@@ -273,9 +273,13 @@ func (s *CloneSetStatusViewer) Status(c kubernetes.Interface, obj runtime.Unstru
 	if cs.Spec.UpdateStrategy.Type == kruiseappsv1alpha1.InPlaceOnlyCloneSetUpdateStrategyType ||
 		cs.Spec.UpdateStrategy.Type == kruiseappsv1alpha1.InPlaceIfPossibleCloneSetUpdateStrategyType {
 		if cs.Spec.Replicas != nil && cs.Spec.UpdateStrategy.Partition != nil {
-			return fmt.Sprintf("Waiting for partitioned roll out to finish: %d out of %d new pods have been updated...\n",
-				cs.Status.UpdatedReplicas, *cs.Spec.Replicas-cs.Spec.UpdateStrategy.Partition.IntVal), false, nil
+			if cs.Status.UpdatedReplicas < (*cs.Spec.Replicas - cs.Spec.UpdateStrategy.Partition.IntVal) {
+				return fmt.Sprintf("Waiting for partitioned roll out to finish: %d out of %d new pods have been updated...\n",
+					cs.Status.UpdatedReplicas, *cs.Spec.Replicas-cs.Spec.UpdateStrategy.Partition.IntVal), false, nil
+			}
 		}
+		return fmt.Sprintf("partitioned roll out complete: %d new pods have been updated...\n",
+			cs.Status.UpdatedReplicas), true, nil
 	}
 
 	if cs.Status.ObservedGeneration == 0 || cs.Generation > cs.Status.ObservedGeneration {
@@ -305,6 +309,8 @@ func (s *CloneSetStatusViewer) DetailStatus(c kubernetes.Interface, obj runtime.
 					cs.Name, cs.Status.UpdatedReplicas, *cs.Spec.Replicas-cs.Spec.UpdateStrategy.Partition.IntVal, generatePodsInfoForCloneSet(c, cs)), false, nil
 			}
 		}
+		return fmt.Sprintf("partitioned roll out complete: %d new pods have been updated...\n",
+			cs.Status.UpdatedReplicas), true, nil
 	}
 
 	if cs.Status.ObservedGeneration == 0 || cs.Generation > cs.Status.ObservedGeneration {
