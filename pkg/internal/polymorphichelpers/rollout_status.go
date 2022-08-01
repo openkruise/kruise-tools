@@ -268,14 +268,22 @@ func (s *CloneSetStatusViewer) Status(c kubernetes.Interface, obj runtime.Unstru
 	if err != nil {
 		return "", false, fmt.Errorf("failed to convert %T to %T: %v", obj, cs, err)
 	}
+	partition, err := CalculatePartitionReplicas(cs.Spec.UpdateStrategy.Partition, cs.Spec.Replicas)
+	if err != nil {
+		return "", false, fmt.Errorf("failed calculate partion of cs %T: %v", cs, err)
+	}
 
 	// check InPlaceOnly and InPlacePossible UpdateStrategy
 	if cs.Spec.UpdateStrategy.Type == kruiseappsv1alpha1.InPlaceOnlyCloneSetUpdateStrategyType ||
 		cs.Spec.UpdateStrategy.Type == kruiseappsv1alpha1.InPlaceIfPossibleCloneSetUpdateStrategyType {
 		if cs.Spec.Replicas != nil && cs.Spec.UpdateStrategy.Partition != nil {
-			return fmt.Sprintf("Waiting for partitioned roll out to finish: %d out of %d new pods have been updated...\n",
-				cs.Status.UpdatedReplicas, *cs.Spec.Replicas-cs.Spec.UpdateStrategy.Partition.IntVal), false, nil
+			if cs.Status.UpdatedReplicas < (*cs.Spec.Replicas - int32(partition)) {
+				return fmt.Sprintf("Waiting for partitioned roll out to finish: %d out of %d new pods have been updated...\n",
+					cs.Status.UpdatedReplicas, *cs.Spec.Replicas-cs.Spec.UpdateStrategy.Partition.IntVal), false, nil
+			}
 		}
+		return fmt.Sprintf("partitioned roll out complete: %d new pods have been updated...\n",
+			cs.Status.UpdatedReplicas), true, nil
 	}
 
 	if cs.Status.ObservedGeneration == 0 || cs.Generation > cs.Status.ObservedGeneration {
@@ -296,15 +304,22 @@ func (s *CloneSetStatusViewer) DetailStatus(c kubernetes.Interface, obj runtime.
 		return "", false, fmt.Errorf("failed to convert %T to %T: %v", obj, cs, err)
 	}
 
+	partition, err := CalculatePartitionReplicas(cs.Spec.UpdateStrategy.Partition, cs.Spec.Replicas)
+	if err != nil {
+		return "", false, fmt.Errorf("failed calculate partion of cs %T: %v", cs, err)
+	}
+
 	// check InPlaceOnly and InPlacePossible UpdateStrategy
 	if cs.Spec.UpdateStrategy.Type == kruiseappsv1alpha1.InPlaceOnlyCloneSetUpdateStrategyType ||
 		cs.Spec.UpdateStrategy.Type == kruiseappsv1alpha1.InPlaceIfPossibleCloneSetUpdateStrategyType {
 		if cs.Spec.Replicas != nil && cs.Spec.UpdateStrategy.Partition != nil {
-			if cs.Status.UpdatedReplicas < (*cs.Spec.Replicas - cs.Spec.UpdateStrategy.Partition.IntVal) {
+			if cs.Status.UpdatedReplicas < (*cs.Spec.Replicas - int32(partition)) {
 				return fmt.Sprintf("CloneSet %s Waiting for partitioned roll out to finish: %d out of %d new pods have been updated...\n%s",
 					cs.Name, cs.Status.UpdatedReplicas, *cs.Spec.Replicas-cs.Spec.UpdateStrategy.Partition.IntVal, generatePodsInfoForCloneSet(c, cs)), false, nil
 			}
 		}
+		return fmt.Sprintf("partitioned roll out complete: %d new pods have been updated...\n",
+			cs.Status.UpdatedReplicas), true, nil
 	}
 
 	if cs.Status.ObservedGeneration == 0 || cs.Generation > cs.Status.ObservedGeneration {
