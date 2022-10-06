@@ -1,5 +1,6 @@
 /*
 Copyright 2022 The Kruise Authors.
+Copyright 2015 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,13 +35,17 @@ type ResourceDistributionPlugin struct {
 
 	// Options for the resourcedistribution.
 	// GeneratorOptions same as configmap and secret generator Options
+	//
+	// The features of fields DisableNameSuffixHash and Immutable in Options are not implemented yet
 	Options *types.GeneratorOptions `json:"options,omitempty" yaml:"options,omitempty"`
 
 	// Behavior of generated resource, must be one of:
 	//   'create': create a new one
 	//   'replace': replace the existing one
 	//   'merge': merge with the existing one
-	Behavior string `json:"behavior,omitempty" yaml:"behavior,omitempty"`
+	//
+	//   The feature of this field is not implemented yet
+	//Behavior string `json:"behavior,omitempty" yaml:"behavior,omitempty"`
 }
 
 // ResourceArgs contain arguments for the resource to be distributed.
@@ -56,6 +61,8 @@ type ResourceArgs struct {
 
 	// Options for the resource to be distributed.
 	// GeneratorOptions same as configmap and secret generator Options
+	//
+	// The feature of field DisableNameSuffixHash in ResourceOptions is not implemented yet
 	ResourceOptions *types.GeneratorOptions `json:"resourceOptions,omitempty" yaml:"resourceOptions,omitempty"`
 
 	// Type of the secret. It can be "Opaque" (default), or "kubernetes.io/tls".
@@ -77,7 +84,42 @@ type TargetsArgs struct {
 	IncludedNamespaces []string `json:"includedNamespaces,omitempty" yaml:"includedNamespaces,omitempty"`
 
 	// NamespaceLabelSelector for the generator.
-	NamespaceLabelSelector *metav1.LabelSelector `json:"namespaceLabelSelector,omitempty" yaml:"namespaceLabelSelector,omitempty"`
+	NamespaceLabelSelector *LabelSelector `json:"namespaceLabelSelector,omitempty" yaml:"namespaceLabelSelector,omitempty"`
+}
+
+// It is the same as metav1.LabelSelector except that the YAMl tag is added after each field
+//
+// A label selector is a label query over a set of resources. The result of matchLabels and
+// matchExpressions are ANDed. An empty label selector matches all objects. A null
+// label selector matches no objects.
+// +structType=atomic
+type LabelSelector struct {
+	// matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+	// map is equivalent to an element of matchExpressions, whose key field is "key", the
+	// operator is "In", and the values array contains only "value". The requirements are ANDed.
+	// +optional
+	MatchLabels map[string]string `json:"matchLabels,omitempty"  protobuf:"bytes,1,rep,name=matchLabels" yaml:"matchLabels,omitempty"`
+	// matchExpressions is a list of label selector requirements. The requirements are ANDed.
+	// +optional
+	MatchExpressions []LabelSelectorRequirement `json:"matchExpressions,omitempty" protobuf:"bytes,2,rep,name=matchExpressions" yaml:"matchExpressions,omitempty"`
+}
+
+// A label selector requirement is a selector that contains values, a key, and an operator that
+// relates the key and values.
+type LabelSelectorRequirement struct {
+	// key is the label key that the selector applies to.
+	// +patchMergeKey=key
+	// +patchStrategy=merge
+	Key string `json:"key" patchStrategy:"merge" patchMergeKey:"key" protobuf:"bytes,1,opt,name=key" yaml:"key,omitempty"`
+	// operator represents a key's relationship to a set of values.
+	// Valid operators are In, NotIn, Exists and DoesNotExist.
+	Operator metav1.LabelSelectorOperator `json:"operator"  protobuf:"bytes,2,opt,name=operator,casttype=LabelSelectorOperator" yaml:"operator,omitempty"`
+	// values is an array of string values. If the operator is In or NotIn,
+	// the values array must be non-empty. If the operator is Exists or DoesNotExist,
+	// the values array must be empty. This array is replaced during a strategic
+	// merge patch.
+	// +optional
+	Values []string `json:"values,omitempty" protobuf:"bytes,3,rep,name=values"  yaml:"values,omitempty"`
 }
 
 func BuildCmd() *cobra.Command {

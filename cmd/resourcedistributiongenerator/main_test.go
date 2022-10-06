@@ -20,13 +20,13 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 
-	"github.com/openkruise/kruise-tools/resourcedistributiongenerator/generator"
+	"github.com/openkruise/kruise-tools/cmd/resourcedistributiongenerator/generator"
+	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 

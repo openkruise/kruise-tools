@@ -106,7 +106,7 @@ func setAllNs(rn *yaml.RNode, allNs bool) error {
 	return nil
 }
 
-func setNsLabelSelector(rn *yaml.RNode, sel *metav1.LabelSelector) error {
+func setNsLabelSelector(rn *yaml.RNode, sel *LabelSelector) error {
 	if sel == nil {
 		return nil
 	}
@@ -137,7 +137,7 @@ func setMatchLabels(rn *yaml.RNode, matchLabels map[string]string) error {
 	return nil
 }
 
-func setMatchExpressions(rn *yaml.RNode, args []metav1.LabelSelectorRequirement) error {
+func setMatchExpressions(rn *yaml.RNode, args []LabelSelectorRequirement) error {
 	if args == nil {
 		return nil
 	}
