@@ -184,9 +184,9 @@ func (r *DeploymentRollbacker) Rollback(obj runtime.Object, updatedAnnotations m
 
 // equalIgnoreHash returns true if two given podTemplateSpec are equal, ignoring the diff in value of Labels[pod-template-hash]
 // We ignore pod-template-hash because:
-// 1. The hash result would be different upon podTemplateSpec API changes
-//    (e.g. the addition of a new field will cause the hash code to change)
-// 2. The deployment template won't have hash labels
+//  1. The hash result would be different upon podTemplateSpec API changes
+//     (e.g. the addition of a new field will cause the hash code to change)
+//  2. The deployment template won't have hash labels
 func equalIgnoreHash(template1, template2 *corev1.PodTemplateSpec) bool {
 	t1Copy := template1.DeepCopy()
 	t2Copy := template2.DeepCopy()
@@ -586,7 +586,7 @@ func (r *AdvancedDaemonSetRollbacker) Rollback(obj runtime.Object,
 		patchOptions.DryRun = []string{metav1.DryRunAll}
 	}
 	// Restore revision
-	if _, err = r.kc.AppsV1alpha1().CloneSets(ads.Namespace).Patch(context.TODO(), ads.Name, types.MergePatchType, toHistory.Data.Raw, patchOptions); err != nil {
+	if _, err = r.kc.AppsV1alpha1().DaemonSets(ads.Namespace).Patch(context.TODO(), ads.Name, types.MergePatchType, toHistory.Data.Raw, patchOptions); err != nil {
 		return "", fmt.Errorf("failed restoring revision %d: %v", toRevision, err)
 	}
 
