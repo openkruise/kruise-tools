@@ -17,8 +17,9 @@ limitations under the License.
 package main
 
 import (
-	"github.com/openkruise/kruise-tools/resourcedistributiongenerator/generator"
 	"os"
+
+	"github.com/openkruise/kruise-tools/cmd/resourcedistributiongenerator/generator"
 )
 
 func main() {

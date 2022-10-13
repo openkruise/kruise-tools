@@ -60,6 +60,25 @@ jobs:
           asset_path: ./_bin/kubectl-kruise/kubectl-kruise-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.tar.gz
           asset_name: kubectl-kruise-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.tar.gz
           asset_content_type: binary/octet-stream
+      - name: Build resourcedistribution-generator
+        run: |
+          ${{ env.GO_BUILD_ENV }} GOOS=${{ steps.get_matrix.outputs.OS }} GOARCH=${{ steps.get_matrix.outputs.ARCH }} \
+            go build -ldflags "${{ env.LDFLAGS }}" \
+            -o _bin/resourcedistribution-generator/${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}/resourcedistributiongenerator -v \
+            ./cmd/resourcedistributiongenerator/main.go
+      - name: Compress resourcedistribution-generator
+        run: |
+          cd _bin/resourcedistribution-generator && \
+          ${{ env.DIST_DIRS }} tar -zcf resourcedistribution-generator-{}.tar.gz {} \; && \
+          cd .. && \
+          sha256sum resourcedistribution-generator/resourcedistribution-generator-* >> sha256-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.txt \
+      - name: Upload resourcedistribution-generator tar.gz
+        uses: actions/upload-release-asset@v1.0.2
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ./_bin/resourcedistribution-generator/resourcedistribution-generator-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.tar.gz
+          asset_name: resourcedistribution-generator-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.tar.gz
+          asset_content_type: binary/octet-stream
       - name: Post sha256
         uses: actions/upload-artifact@v2
         with:
