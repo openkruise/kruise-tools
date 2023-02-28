@@ -23,6 +23,8 @@ import (
 	"strings"
 	"testing"
 
+	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
+
 	"github.com/stretchr/testify/assert"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -611,6 +613,22 @@ func TestSetImageRemote(t *testing.T) {
 			groupVersion: corev1.SchemeGroupVersion,
 			path:         "/namespaces/test/replicationcontrollers/nginx",
 			args:         []string{"replicationcontroller", "nginx", "*=thingy"},
+		},
+		{
+			name: "set image kruiseappsv1alpha1.SidecarSet",
+			object: &kruiseappsv1alpha1.SidecarSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: kruiseappsv1alpha1.SidecarSetSpec{
+					Containers: []kruiseappsv1alpha1.SidecarContainer{
+						{
+							Container: corev1.Container{Name: "nginx", Image: "nginx"},
+						},
+					},
+				},
+			},
+			groupVersion: corev1.SchemeGroupVersion,
+			path:         "/namespaces/test/sidecarsets/nginx",
+			args:         []string{"sidecarsets", "nginx", "*=thingy"},
 		},
 	}
 	for _, input := range inputs {
