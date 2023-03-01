@@ -244,8 +244,8 @@ func (o *SetImageOptions) Run() error {
 				var initContainerFound, containerFound bool
 				// Check if the type is kruiseappsv1alpha1.SidecarSet, and if the placeholder is nil.
 				if t, ok := obj.(*kruiseappsv1alpha1.SidecarSet); ok && spec == nil {
-					initContainerFound = setSideCarImage(t.Spec.Containers, name, resolvedImageName)
-					containerFound = setSideCarImage(t.Spec.InitContainers, name, resolvedImageName)
+					initContainerFound = setSideCarImage(t.Spec.InitContainers, name, resolvedImageName)
+					containerFound = setSideCarImage(t.Spec.Containers, name, resolvedImageName)
 				} else {
 					initContainerFound = setImage(spec.InitContainers, name, resolvedImageName)
 					containerFound = setImage(spec.Containers, name, resolvedImageName)
