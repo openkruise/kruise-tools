@@ -40,6 +40,12 @@ func updatePodSpecForObject(obj runtime.Object, fn func(*v1.PodSpec) error) (boo
 		return true, fn(&t.Spec.Template.Spec)
 	case *kruiseappsv1alpha1.DaemonSet:
 		return true, fn(&t.Spec.Template.Spec)
+	case *kruiseappsv1alpha1.SidecarSet:
+		// Because the fn function requires passing v1.PodSpec as a parameter,
+		// but kruiseappsv1alpha1.SidecarSet only has kruiseappsv1alpha1.SidecarContainer,
+		// and their types do not match.
+		// Therefore, passing nil as a placeholder here.
+		return true, fn(nil)
 	case *v1.Pod:
 		return true, fn(&t.Spec)
 		// ReplicationController

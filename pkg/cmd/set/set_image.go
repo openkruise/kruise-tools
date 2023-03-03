@@ -19,6 +19,7 @@ package set
 import (
 	"fmt"
 
+	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	"github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -240,9 +241,15 @@ func (o *SetImageOptions) Run() error {
 					}
 					continue
 				}
-
-				initContainerFound := setImage(spec.InitContainers, name, resolvedImageName)
-				containerFound := setImage(spec.Containers, name, resolvedImageName)
+				var initContainerFound, containerFound bool
+				// Check if the type is kruiseappsv1alpha1.SidecarSet, and if the placeholder is nil.
+				if t, ok := obj.(*kruiseappsv1alpha1.SidecarSet); ok && spec == nil {
+					initContainerFound = setSideCarImage(t.Spec.InitContainers, name, resolvedImageName)
+					containerFound = setSideCarImage(t.Spec.Containers, name, resolvedImageName)
+				} else {
+					initContainerFound = setImage(spec.InitContainers, name, resolvedImageName)
+					containerFound = setImage(spec.Containers, name, resolvedImageName)
+				}
 				if !containerFound && !initContainerFound {
 					allErrs = append(allErrs, fmt.Errorf("error: unable to find container named %q", name))
 				}
@@ -305,6 +312,19 @@ func (o *SetImageOptions) Run() error {
 }
 
 func setImage(containers []corev1.Container, containerName string, image string) bool {
+	containerFound := false
+	// Find the container to update, and update its image
+	for i, c := range containers {
+		if c.Name == containerName || containerName == "*" {
+			containerFound = true
+			containers[i].Image = image
+		}
+	}
+	return containerFound
+}
+
+// setSideCarImage
+func setSideCarImage(containers []kruiseappsv1alpha1.SidecarContainer, containerName string, image string) bool {
 	containerFound := false
 	// Find the container to update, and update its image
 	for i, c := range containers {
