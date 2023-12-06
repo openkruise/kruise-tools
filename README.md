@@ -78,7 +78,10 @@ $ kubectl kruise rollout status statefulsets/sts1
 $ kubectl kruise rollout status statefulsets.apps.kruise.io/sts2
 
 # approve a kruise rollout resource named "rollout-demo" in "ns-demo" namespace
-$ kubectl-kruise rollout approve rollout-demo -n ns-demo`
+$ kubectl kruise rollout approve rollout-demo -n ns-demo`
+
+# undo a kruise rollout resource
+$ kubectl kruise rollout undo rollout/rollout-demo
 ```
 
 ### set
@@ -138,7 +141,7 @@ kubectl kruise exec clone/myclone -S sidecar-container -it -- bash
 ```bash
 kubectl kruise migrate CloneSet --from Deployment --src-name deployment-demo --dst-name cloneset-demo --create --copy
 ```
-   
+
 #### kubectl kruise rollout for CloneSet workload
    * [x] undo
    * [x] history
@@ -146,7 +149,7 @@ kubectl kruise migrate CloneSet --from Deployment --src-name deployment-demo --d
    * [x] pause
    * [x] resume
    * [x] restart
-   
+
 #### kubectl kruise rollout for Advanced StatefulSet
    * [x]  undo
    * [x] history
@@ -155,22 +158,22 @@ kubectl kruise migrate CloneSet --from Deployment --src-name deployment-demo --d
 
 #### kubectl kruise expose for CloneSet workload
    * [x] kubectl kruise expose cloneset demo-clone  --port=80 --target-port=8000
-   
+
 #### kubectl kruise set SUBCOMMAND [options] for CloneSet
    * [x] kubectl kruise set image cloneset/abc
    * [x] kubectl kruise set env cloneset/abc
    * [x] kubectl kruise set serviceaccount cloneset/abc
    * [x] kubectl kruise set resources cloneset/abc
-   
+
 #### kubectl kruise set SUBCOMMAND [options] for Advanced StatefulSet
    * [x] kubectl kruise set image asts/abc
    * [x] kubectl kruise set env asts/abc
    * [x] kubectl kruise set serviceaccount asts/abc
    * [x] kubectl kruise set resources asts/abc
-   
+
 #### kubectl kruise autoscale SUBCOMMAND [options]
    * [ ] kubectl kruise autoscale 
- 
+
 
 ### Contributing
 We encourage you to help out by reporting issues, improving documentation, fixing bugs, or adding new features. 

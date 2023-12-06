@@ -22,8 +22,10 @@ import (
 
 	internalapi "github.com/openkruise/kruise-tools/pkg/api"
 	internalpolymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
-
+	kruiserolloutsv1apha1 "github.com/openkruise/rollouts/api/v1alpha1"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
@@ -67,7 +69,10 @@ var (
 		kubectl-kruise rollout undo daemonset/abc --to-revision=3
 
 		# Rollback to the previous deployment with dry-run
-		kubectl-kruise rollout undo --dry-run=server deployment/abc`)
+		kubectl-kruise rollout undo --dry-run=server deployment/abc
+		
+		# Rollback to workload via rollout api object
+		kubectl-kruise rollout undo rollout/abc`)
 )
 
 // NewRolloutUndoOptions returns an initialized UndoOptions instance
@@ -83,7 +88,7 @@ func NewRolloutUndoOptions(streams genericclioptions.IOStreams) *UndoOptions {
 func NewCmdRolloutUndo(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	o := NewRolloutUndoOptions(streams)
 
-	validArgs := []string{"deployment", "daemonset", "statefulset", "cloneset", "advanced statefulset"}
+	validArgs := []string{"deployment", "daemonset", "statefulset", "cloneset", "advanced statefulset", "rollout"}
 
 	cmd := &cobra.Command{
 		Use:                   "undo (TYPE NAME | TYPE/NAME) [flags]",
@@ -157,13 +162,13 @@ func (o *UndoOptions) RunUndo() error {
 		ResourceTypeOrNameArgs(true, o.Resources...).
 		ContinueOnError().
 		Latest().
-		Flatten().
-		Do()
+		Flatten().Do()
 	if err := r.Err(); err != nil {
 		return err
 	}
 
-	err := r.Visit(func(info *resource.Info, err error) error {
+	// perform undo logic here
+	undoFunc := func(info *resource.Info, err error) error {
 		if err != nil {
 			return err
 		}
@@ -188,7 +193,71 @@ func (o *UndoOptions) RunUndo() error {
 		}
 
 		return printer.PrintObj(info.Object, o.Out)
+	}
+
+	var refResources []string
+	// deduplication: If a rollout arg references a workload which is also specified as an arg in the same command,
+	// performing multiple undo operations on the workload within a single command is not smart. Such an action could
+	// lead to confusion and yield unintended consequences. Therefore, undo operations in this context are disallowed.
+	// Should such a scenario occur, only the first argument that points to the workload will be executed.
+	deDuplica := make(map[string]struct{})
+
+	err := r.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.Mapping.GroupVersionKind.Group == "rollouts.kruise.io" && info.Mapping.GroupVersionKind.Kind == "Rollout" {
+			obj := info.Object
+			if obj == nil {
+				return fmt.Errorf("Rollout object not found")
+			}
+			ro, ok := obj.(*kruiserolloutsv1apha1.Rollout)
+			if !ok {
+				return fmt.Errorf("unsupported version of Rollout")
+			}
+			workloadRef := ro.Spec.ObjectRef.WorkloadRef
+			gv, err := schema.ParseGroupVersion(workloadRef.APIVersion)
+			if err != nil {
+				return err
+			}
+			deDuplicaKey := workloadRef.Kind + "." + gv.Version + "." + gv.Group + "/" + workloadRef.Name
+			if _, ok := deDuplica[deDuplicaKey]; ok {
+				return nil
+			}
+			deDuplica[deDuplicaKey] = struct{}{}
+			refResources = append(refResources, deDuplicaKey)
+			return nil
+		}
+		gvk := info.Mapping.GroupVersionKind
+		deDuplicaKey := gvk.Kind + "." + gvk.Version + "." + gvk.Group + "/" + info.Name
+		if _, ok := deDuplica[deDuplicaKey]; ok {
+			return nil
+		}
+		deDuplica[deDuplicaKey] = struct{}{}
+		return undoFunc(info, nil)
 	})
 
-	return err
+	if len(refResources) < 1 {
+		return err
+	}
+
+	var aggErrs []error
+	aggErrs = append(aggErrs, err)
+	r2 := o.Builder().
+		WithScheme(internalapi.GetScheme(), scheme.Scheme.PrioritizedVersionsAllGroups()...).
+		NamespaceParam(o.Namespace).DefaultNamespace().
+		FilenameParam(o.EnforceNamespace, &o.FilenameOptions).
+		ResourceTypeOrNameArgs(true, refResources...).
+		ContinueOnError().
+		Latest().
+		Flatten().Do()
+
+	if err = r2.Err(); err != nil {
+		aggErrs = append(aggErrs, err)
+		return errors.NewAggregate(aggErrs)
+	}
+	err = r2.Visit(undoFunc)
+	aggErrs = append(aggErrs, err)
+	return errors.NewAggregate(aggErrs)
 }
