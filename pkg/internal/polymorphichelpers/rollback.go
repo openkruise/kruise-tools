@@ -87,6 +87,9 @@ func (v *RollbackVisitor) VisitAdvancedStatefulSet(kind internalapps.GroupKindEl
 func (v *RollbackVisitor) VisitAdvancedDaemonSet(kind internalapps.GroupKindElement) {
 	v.result = &AdvancedDaemonSetRollbacker{k: v.clientset, kc: v.kruiseclientset}
 }
+func (v *RollbackVisitor) VisitRollout(kind internalapps.GroupKindElement) {
+	v.result = &RolloutRollbacker{k: v.clientset, kc: v.kruiseclientset}
+}
 
 // RollbackerFor returns an implementation of Rollbacker interface for the given schema kind
 func RollbackerFor(kind schema.GroupKind, c kubernetes.Interface, kc kruiseclientsets.Interface) (Rollbacker, error) {
@@ -538,6 +541,20 @@ func (r *AdvancedStatefulSetRollbacker) Rollback(obj runtime.Object,
 type AdvancedDaemonSetRollbacker struct {
 	k  kubernetes.Interface
 	kc kruiseclientsets.Interface
+}
+
+type RolloutRollbacker struct {
+	k  kubernetes.Interface
+	kc kruiseclientsets.Interface
+}
+
+// RolloutRollbacker.Rollback never be called
+func (r *RolloutRollbacker) Rollback(obj runtime.Object,
+	updatedAnnotations map[string]string,
+	toRevision int64,
+	dryRunStrategy cmdutil.DryRunStrategy) (string, error) {
+
+	return rollbackSuccess, nil
 }
 
 func (r *AdvancedDaemonSetRollbacker) Rollback(obj runtime.Object,
