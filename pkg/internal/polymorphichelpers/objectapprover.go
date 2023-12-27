@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	kruiserolloutsv1apha1 "github.com/openkruise/rollouts/api/v1alpha1"
+	kruiserolloutsv1beta1 "github.com/openkruise/rollouts/api/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubectl/pkg/scheme"
 )
@@ -34,7 +35,12 @@ func defaultObjectApprover(obj runtime.Object) ([]byte, error) {
 		}
 		obj.Status.CanaryStatus.CurrentStepState = kruiserolloutsv1apha1.CanaryStepStateReady
 		return runtime.Encode(scheme.Codecs.LegacyCodec(kruiserolloutsv1apha1.GroupVersion), obj)
-
+	case *kruiserolloutsv1beta1.Rollout:
+		if obj.Status.CanaryStatus == nil || obj.Status.CanaryStatus.CurrentStepState != kruiserolloutsv1beta1.CanaryStepStatePaused {
+			return nil, errors.New("does not allow to approve, because current canary state is not 'StepPaused'")
+		}
+		obj.Status.CanaryStatus.CurrentStepState = kruiserolloutsv1beta1.CanaryStepStateReady
+		return runtime.Encode(scheme.Codecs.LegacyCodec(kruiserolloutsv1beta1.GroupVersion), obj)
 	default:
 		return nil, fmt.Errorf("approving is not supported")
 	}

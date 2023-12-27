@@ -91,9 +91,10 @@ type ExposeServiceOptions struct {
 	PrintFlags      *genericclioptions.PrintFlags
 	PrintObj        printers.ResourcePrinterFunc
 
-	DryRunStrategy   cmdutil.DryRunStrategy
-	DryRunVerifier   *resource.DryRunVerifier
-	EnforceNamespace bool
+	DryRunStrategy      cmdutil.DryRunStrategy
+	DryRunVerifier      *resource.QueryParamVerifier
+	ValidationDirective string
+	EnforceNamespace    bool
 
 	fieldManager string
 
@@ -182,11 +183,11 @@ func (o *ExposeServiceOptions) Complete(f cmdutil.Factory, cmd *cobra.Command) e
 	if err != nil {
 		return err
 	}
-	discoveryClient, err := f.ToDiscoveryClient()
-	if err != nil {
-		return err
-	}
-	o.DryRunVerifier = resource.NewDryRunVerifier(dynamicClient, discoveryClient)
+	//discoveryClient, err := f.ToDiscoveryClient()
+	//if err != nil {
+	//	return err
+	//}
+	o.DryRunVerifier = resource.NewQueryParamVerifier(dynamicClient, f.OpenAPIGetter(), resource.QueryParamDryRun)
 
 	cmdutil.PrintFlagsWithDryRunStrategy(o.PrintFlags, o.DryRunStrategy)
 	printer, err := o.PrintFlags.ToPrinter()
@@ -215,6 +216,11 @@ func (o *ExposeServiceOptions) Complete(f cmdutil.Factory, cmd *cobra.Command) e
 	}
 
 	o.Namespace, o.EnforceNamespace, err = f.ToRawKubeConfigLoader().Namespace()
+	if err != nil {
+		return err
+	}
+
+	o.ValidationDirective, err = cmdutil.GetValidationDirective(cmd)
 	if err != nil {
 		return err
 	}

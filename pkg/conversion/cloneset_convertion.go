@@ -34,7 +34,7 @@ func DeploymentToCloneSet(deploy *apps.Deployment, dstCloneSetName string) *apps
 			Labels:      from.Labels,
 			Annotations: from.Annotations,
 			Finalizers:  from.Finalizers,
-			ClusterName: from.ClusterName,
+			//ClusterName: from.ClusterName,
 		},
 		Spec: appsv1alpha1.CloneSetSpec{
 			Replicas:             from.Spec.Replicas,

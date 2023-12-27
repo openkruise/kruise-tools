@@ -65,14 +65,18 @@ type CreateBroadcastJobOptions struct {
 	From    string
 	Command []string
 
-	Namespace            string
-	EnforceNamespace     bool
-	kruisev1alpha1Client kruiseclientsets.Interface
-	DryRunStrategy       cmdutil.DryRunStrategy
-	DryRunVerifier       *resource.DryRunVerifier
-	Builder              *resource.Builder
-	FieldManager         string
-	CreateAnnotation     bool
+	Namespace               string
+	EnforceNamespace        bool
+	kruisev1alpha1Client    kruiseclientsets.Interface
+	DryRunStrategy          cmdutil.DryRunStrategy
+	DryRunVerifier          *resource.QueryParamVerifier
+	FieldValidationVerifier *resource.QueryParamVerifier
+
+	ValidationDirective string
+
+	Builder          *resource.Builder
+	FieldManager     string
+	CreateAnnotation bool
 
 	genericclioptions.IOStreams
 }
@@ -148,7 +152,7 @@ func (o *CreateBroadcastJobOptions) Complete(f cmdutil.Factory, cmd *cobra.Comma
 	if err != nil {
 		return err
 	}
-	o.DryRunVerifier = resource.NewDryRunVerifier(dynamicClient, f.OpenAPIGetter())
+	o.DryRunVerifier = resource.NewQueryParamVerifier(dynamicClient, f.OpenAPIGetter(), resource.QueryParamDryRun)
 	cmdutil.PrintFlagsWithDryRunStrategy(o.PrintFlags, o.DryRunStrategy)
 	printer, err := o.PrintFlags.ToPrinter()
 	if err != nil {
@@ -156,6 +160,11 @@ func (o *CreateBroadcastJobOptions) Complete(f cmdutil.Factory, cmd *cobra.Comma
 	}
 	o.PrintObj = func(obj runtime.Object) error {
 		return printer.PrintObj(obj, o.Out)
+	}
+
+	o.ValidationDirective, err = cmdutil.GetValidationDirective(cmd)
+	if err != nil {
+		return err
 	}
 
 	return nil

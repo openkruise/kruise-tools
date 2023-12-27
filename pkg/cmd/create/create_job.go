@@ -66,14 +66,15 @@ type CreateJobOptions struct {
 	From    string
 	Command []string
 
-	Namespace        string
-	EnforceNamespace bool
-	Client           batchv1client.BatchV1Interface
-	DryRunStrategy   cmdutil.DryRunStrategy
-	DryRunVerifier   *resource.DryRunVerifier
-	Builder          *resource.Builder
-	FieldManager     string
-	CreateAnnotation bool
+	Namespace           string
+	EnforceNamespace    bool
+	Client              batchv1client.BatchV1Interface
+	DryRunStrategy      cmdutil.DryRunStrategy
+	DryRunVerifier      *resource.QueryParamVerifier
+	Builder             *resource.Builder
+	ValidationDirective string
+	FieldManager        string
+	CreateAnnotation    bool
 
 	genericclioptions.IOStreams
 }
@@ -149,7 +150,7 @@ func (o *CreateJobOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args 
 	if err != nil {
 		return err
 	}
-	o.DryRunVerifier = resource.NewDryRunVerifier(dynamicClient, f.OpenAPIGetter())
+	o.DryRunVerifier = resource.NewQueryParamVerifier(dynamicClient, f.OpenAPIGetter(), resource.QueryParamDryRun)
 	cmdutil.PrintFlagsWithDryRunStrategy(o.PrintFlags, o.DryRunStrategy)
 	printer, err := o.PrintFlags.ToPrinter()
 	if err != nil {
@@ -157,6 +158,11 @@ func (o *CreateJobOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args 
 	}
 	o.PrintObj = func(obj runtime.Object) error {
 		return printer.PrintObj(obj, o.Out)
+	}
+
+	o.ValidationDirective, err = cmdutil.GetValidationDirective(cmd)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -334,7 +340,7 @@ func (o *CreateJobOptions) createJobFromAdvancedCronJob(cronJob *kruiseappsv1alp
 }
 
 func (o *CreateJobOptions) createJobFromJobTemplate(ownerReferenceName string, ownerReferenceUID types.UID,
-	jobTemplate *batchv1beta1.JobTemplateSpec) *batchv1.Job {
+	jobTemplate *batchv1.JobTemplateSpec) *batchv1.Job {
 
 	annotations := make(map[string]string)
 	job := &batchv1.Job{}

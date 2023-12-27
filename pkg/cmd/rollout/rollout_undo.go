@@ -44,7 +44,7 @@ type UndoOptions struct {
 	Builder          func() *resource.Builder
 	ToRevision       int64
 	DryRunStrategy   cmdutil.DryRunStrategy
-	DryRunVerifier   *resource.DryRunVerifier
+	DryRunVerifier   *resource.QueryParamVerifier
 	Resources        []string
 	Namespace        string
 	EnforceNamespace bool
@@ -124,11 +124,11 @@ func (o *UndoOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []str
 	if err != nil {
 		return err
 	}
-	discoveryClient, err := f.ToDiscoveryClient()
-	if err != nil {
-		return err
-	}
-	o.DryRunVerifier = resource.NewDryRunVerifier(dynamicClient, discoveryClient)
+	//discoveryClient, err := f.ToDiscoveryClient()
+	//if err != nil {
+	//	return err
+	//}
+	o.DryRunVerifier = resource.NewQueryParamVerifier(dynamicClient, f.OpenAPIGetter(), resource.QueryParamDryRun)
 
 	if o.Namespace, o.EnforceNamespace, err = f.ToRawKubeConfigLoader().Namespace(); err != nil {
 		return err
