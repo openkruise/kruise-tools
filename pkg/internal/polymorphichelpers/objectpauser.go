@@ -22,7 +22,7 @@ import (
 	"fmt"
 
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
-	kruiserolloutsv1apha1 "github.com/openkruise/rollouts/api/v1alpha1"
+	kruiserolloutsv1apha1 "github.com/openkruise/kruise-rollout-api/rollouts/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"

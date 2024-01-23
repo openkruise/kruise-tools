@@ -86,7 +86,7 @@ type CreateCRROptions struct {
 	ClientSet            kubernetes.Interface
 	EnforceNamespace     bool
 	DryRunStrategy       cmdutil.DryRunStrategy
-	DryRunVerifier       *resource.DryRunVerifier
+	DryRunVerifier       *resource.QueryParamVerifier
 	Builder              *resource.Builder
 	FieldManager         string
 	CreateAnnotation     bool
@@ -179,7 +179,7 @@ func (o *CreateCRROptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args 
 	if err != nil {
 		return err
 	}
-	o.DryRunVerifier = resource.NewDryRunVerifier(dynamicClient, f.OpenAPIGetter())
+	o.DryRunVerifier = resource.NewQueryParamVerifier(dynamicClient, f.OpenAPIGetter(), resource.QueryParamDryRun)
 	cmdutil.PrintFlagsWithDryRunStrategy(o.PrintFlags, o.DryRunStrategy)
 	printer, err := o.PrintFlags.ToPrinter()
 	if err != nil {
@@ -251,7 +251,11 @@ func (o *CreateCRROptions) getAllCRRContainersInPod() ([]kruiseappsv1alpha1.Cont
 	for _, container := range pod.Spec.Containers {
 		crrContainer := kruiseappsv1alpha1.ContainerRecreateRequestContainer{}
 		if container.Lifecycle != nil {
-			crrContainer.PreStop = container.Lifecycle.PreStop
+			crrContainer.PreStop = &kruiseappsv1alpha1.ProbeHandler{
+				Exec:      container.Lifecycle.PreStop.Exec,
+				HTTPGet:   container.Lifecycle.PreStop.HTTPGet,
+				TCPSocket: container.Lifecycle.PreStop.TCPSocket,
+			}
 		}
 		crrContainer.Name = container.Name
 		crrContainer.Ports = container.Ports

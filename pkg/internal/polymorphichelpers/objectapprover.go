@@ -20,7 +20,7 @@ import (
 	"errors"
 	"fmt"
 
-	kruiserolloutsv1apha1 "github.com/openkruise/rollouts/api/v1alpha1"
+	kruiserolloutsv1apha1 "github.com/openkruise/kruise-rollout-api/rollouts/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubectl/pkg/scheme"
 )
