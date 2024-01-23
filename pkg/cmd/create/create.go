@@ -201,7 +201,9 @@ func (o *CreateOptions) Complete(f cmdutil.Factory, cmd *cobra.Command) error {
 	o.FieldValidationVerifier = resource.NewQueryParamVerifier(dynamicClient, f.OpenAPIGetter(), resource.QueryParamFieldValidation)
 
 	o.ValidationDirective, err = cmdutil.GetValidationDirective(cmd)
-
+	if err != nil {
+		return err
+	}
 	printer, err := o.PrintFlags.ToPrinter()
 	if err != nil {
 		return err
@@ -306,7 +308,7 @@ func RunEditOnCreate(f cmdutil.Factory, printFlags *genericclioptions.PrintFlags
 		return err
 	}
 	editOptions.ValidateOptions = cmdutil.ValidateOptions{
-		ValidationDirective: string(validationDirective),
+		ValidationDirective: validationDirective,
 	}
 	editOptions.PrintFlags = printFlags
 	editOptions.ApplyAnnotation = cmdutil.GetFlagBool(cmd, cmdutil.ApplyAnnotationsFlag)
