@@ -19,7 +19,7 @@ package api
 import (
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
-	kruiserolloutsv1apha1 "github.com/openkruise/kruise-rollout-api/rollouts/v1alpha1"
+	kruiserolloutsv1apha1 "github.com/openkruise/kruise-rollout-api/rollouts/v1beta1"
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"

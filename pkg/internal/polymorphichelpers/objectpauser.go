@@ -22,7 +22,7 @@ import (
 	"fmt"
 
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
-	kruiserolloutsv1apha1 "github.com/openkruise/kruise-rollout-api/rollouts/v1alpha1"
+	rolloutsapi "github.com/openkruise/kruise-rollout-api/rollouts/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -69,12 +69,12 @@ func defaultObjectPauser(obj runtime.Object) ([]byte, error) {
 		obj.Spec.UpdateStrategy.Paused = true
 		return runtime.Encode(scheme.Codecs.LegacyCodec(kruiseappsv1alpha1.SchemeGroupVersion), obj)
 
-	case *kruiserolloutsv1apha1.Rollout:
+	case *rolloutsapi.Rollout:
 		if obj.Spec.Strategy.Paused {
 			return nil, errors.New("is already paused")
 		}
 		obj.Spec.Strategy.Paused = true
-		return runtime.Encode(scheme.Codecs.LegacyCodec(kruiserolloutsv1apha1.SchemeGroupVersion), obj)
+		return runtime.Encode(scheme.Codecs.LegacyCodec(rolloutsapi.SchemeGroupVersion), obj)
 
 	default:
 		return nil, fmt.Errorf("pausing is not supported")

@@ -20,7 +20,7 @@ package rollout
 import (
 	"fmt"
 
-	kruiserolloutsv1apha1 "github.com/openkruise/kruise-rollout-api/rollouts/v1alpha1"
+	rolloutsapi "github.com/openkruise/kruise-rollout-api/rollouts/v1beta1"
 	internalapi "github.com/openkruise/kruise-tools/pkg/api"
 	internalpolymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
@@ -208,11 +208,11 @@ func (o *UndoOptions) RunUndo() error {
 			if obj == nil {
 				return fmt.Errorf("Rollout object not found")
 			}
-			ro, ok := obj.(*kruiserolloutsv1apha1.Rollout)
+			ro, ok := obj.(*rolloutsapi.Rollout)
 			if !ok {
 				return fmt.Errorf("unsupported version of Rollout")
 			}
-			workloadRef := ro.Spec.ObjectRef.WorkloadRef
+			workloadRef := ro.Spec.WorkloadRef
 			gv, err := schema.ParseGroupVersion(workloadRef.APIVersion)
 			if err != nil {
 				return err
