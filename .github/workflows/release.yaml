@@ -7,7 +7,7 @@ on:
 
 env:
   # Common versions
-  GO_VERSION: '1.18'
+  GO_VERSION: '1.20'
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
@@ -20,9 +20,9 @@ jobs:
       GO_BUILD_ENV: GO111MODULE=on CGO_ENABLED=0
       DIST_DIRS: find * -type d -exec
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Get release
@@ -58,7 +58,7 @@ jobs:
         with:
           upload_url: ${{ steps.get_release.outputs.upload_url }}
           asset_path: ./_bin/kubectl-kruise/kubectl-kruise-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.tar.gz
-          asset_name: kubectl-kruise-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.tar.gz
+          asset_name: kubectl-kruise-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}-${{ steps.get_release.outputs.tag_name }}.tar.gz
           asset_content_type: binary/octet-stream
       - name: Build resourcedistribution-generator
         run: |
@@ -77,12 +77,12 @@ jobs:
         with:
           upload_url: ${{ steps.get_release.outputs.upload_url }}
           asset_path: ./_bin/resourcedistribution-generator/resourcedistribution-generator-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.tar.gz
-          asset_name: resourcedistribution-generator-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.tar.gz
+          asset_name: resourcedistribution-generator-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}-${{ steps.get_release.outputs.tag_name }}.tar.gz
           asset_content_type: binary/octet-stream
       - name: Post sha256
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: sha256sums
+          name: sha256sums-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}
           path: ./_bin/sha256-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.txt
           retention-days: 1
   upload-sha256sums-plugin:
@@ -91,26 +91,28 @@ jobs:
     name: upload-sha256sums
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Get release
         id: get_release
         uses: bruceadams/get-release@v1.2.2
       - name: Download sha256sums
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4.1.7
         with:
-          name: sha256sums
+          name: 'sha256sums-*'
+          path: sha256sums
       - shell: bash
         run: |
-          for file in *.txt
+          cd sha256sums
+          for file in */*.txt
           do
-            cat ${file} >> sha256sums.txt
+            cat ${file} >> ../sha256sums.txt
           done
       - name: Upload Checksums
         uses: actions/upload-release-asset@v1.0.2
         with:
           upload_url: ${{ steps.get_release.outputs.upload_url }}
           asset_path: sha256sums.txt
-          asset_name: sha256sums.txt
+          asset_name: sha256sums-${{ steps.get_release.outputs.tag_name }}.txt
           asset_content_type: text/plain
       - name: Update kubectl plugin version in krew-index
         uses: rajatjindal/krew-release-bot@v0.0.43

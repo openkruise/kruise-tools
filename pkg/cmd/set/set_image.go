@@ -47,7 +47,6 @@ type SetImageOptions struct {
 	Infos          []*resource.Info
 	Selector       string
 	DryRunStrategy cmdutil.DryRunStrategy
-	DryRunVerifier *resource.QueryParamVerifier
 	All            bool
 	Output         string
 	Local          bool
@@ -147,11 +146,6 @@ func (o *SetImageOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args [
 	if err != nil {
 		return err
 	}
-	dynamicClient, err := f.DynamicClient()
-	if err != nil {
-		return err
-	}
-	o.DryRunVerifier = resource.NewQueryParamVerifier(dynamicClient, f.OpenAPIGetter(), resource.QueryParamDryRun)
 	o.Output = cmdutil.GetFlagString(cmd, "output")
 	o.ResolveImage = resolveImageFunc
 
@@ -281,12 +275,6 @@ func (o *SetImageOptions) Run() error {
 				allErrs = append(allErrs, err)
 			}
 			continue
-		}
-
-		if o.DryRunStrategy == cmdutil.DryRunServer {
-			if err := o.DryRunVerifier.HasSupport(info.Mapping.GroupVersionKind); err != nil {
-				return err
-			}
 		}
 
 		// patch the change
