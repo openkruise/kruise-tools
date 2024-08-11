@@ -1,0 +1,135 @@
+name: kubectl-kruise wait
+synopsis: |
+    Experimental: Wait for a specific condition on one or many resources
+description: |-
+    Experimental: Wait for a specific condition on one or many resources.
+
+     The command takes multiple resources and waits until the specified condition is seen in the Status field of every given resource.
+
+     Alternatively, the command can wait for the given set of resources to be deleted by providing the "delete" keyword as the value to the --for flag.
+
+     A successful message will be printed to stdout indicating when the specified condition has been met. You can use -o option to change to output destination.
+usage: kubectl-kruise wait ([-f FILENAME] | resource.group/resource.name | resource.group [(-l label | --all)]) [--for=delete|--for condition=available|--for=jsonpath='{}'=value]
+options:
+    - name: all
+      default_value: "false"
+      usage: |
+        Select all resources in the namespace of the specified resource types
+    - name: all-namespaces
+      shorthand: A
+      default_value: "false"
+      usage: |
+        If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even if specified with --namespace.
+    - name: allow-missing-template-keys
+      default_value: "true"
+      usage: |
+        If true, ignore any errors in templates when a field or map key is missing in the template. Only applies to golang and jsonpath output formats.
+    - name: field-selector
+      usage: |
+        Selector (field query) to filter on, supports '=', '==', and '!='.(e.g. --field-selector key1=value1,key2=value2). The server only supports a limited number of field queries per type.
+    - name: filename
+      shorthand: f
+      default_value: '[]'
+      usage: identifying the resource.
+    - name: for
+      usage: |
+        The condition to wait on: [delete|condition=condition-name[=condition-value]|jsonpath='{JSONPath expression}'=JSONPath Condition]. The default condition-value is true.  Condition values are compared after Unicode simple case folding, which is a more general form of case-insensitivity.
+    - name: help
+      shorthand: h
+      default_value: "false"
+      usage: help for wait
+    - name: local
+      default_value: "false"
+      usage: |
+        If true, annotation will NOT contact api-server but run locally.
+    - name: output
+      shorthand: o
+      usage: |
+        Output format. One of: (json, yaml, name, go-template, go-template-file, template, templatefile, jsonpath, jsonpath-as-json, jsonpath-file).
+    - name: recursive
+      shorthand: R
+      default_value: "true"
+      usage: |
+        Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.
+    - name: selector
+      shorthand: l
+      usage: |
+        Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)
+    - name: show-managed-fields
+      default_value: "false"
+      usage: |
+        If true, keep the managedFields when printing objects in JSON or YAML format.
+    - name: template
+      usage: |
+        Template string or path to template file to use when -o=go-template, -o=go-template-file. The template format is golang templates [http://golang.org/pkg/text/template/#pkg-overview].
+    - name: timeout
+      default_value: 30s
+      usage: |
+        The length of time to wait before giving up.  Zero means check once and don't wait, negative means wait for a week.
+inherited_options:
+    - name: as
+      usage: |
+        Username to impersonate for the operation. User could be a regular user or a service account in a namespace.
+    - name: as-group
+      default_value: '[]'
+      usage: |
+        Group to impersonate for the operation, this flag can be repeated to specify multiple groups.
+    - name: as-uid
+      usage: UID to impersonate for the operation.
+    - name: cache-dir
+      default_value: ${HOME}/.kube/cache
+      usage: Default cache directory
+    - name: certificate-authority
+      usage: Path to a cert file for the certificate authority
+    - name: client-certificate
+      usage: Path to a client certificate file for TLS
+    - name: client-key
+      usage: Path to a client key file for TLS
+    - name: cluster
+      usage: The name of the kubeconfig cluster to use
+    - name: context
+      usage: The name of the kubeconfig context to use
+    - name: insecure-skip-tls-verify
+      default_value: "false"
+      usage: |
+        If true, the server's certificate will not be checked for validity. This will make your HTTPS connections insecure
+    - name: kubeconfig
+      usage: Path to the kubeconfig file to use for CLI requests.
+    - name: match-server-version
+      default_value: "false"
+      usage: Require server version to match client version
+    - name: namespace
+      shorthand: "n"
+      usage: If present, the namespace scope for this CLI request
+    - name: password
+      usage: Password for basic authentication to the API server
+    - name: profile
+      default_value: none
+      usage: |
+        Name of profile to capture. One of (none|cpu|heap|goroutine|threadcreate|block|mutex)
+    - name: profile-output
+      default_value: profile.pprof
+      usage: Name of the file to write the profile to
+    - name: request-timeout
+      default_value: "0"
+      usage: |
+        The length of time to wait before giving up on a single server request. Non-zero values should contain a corresponding time unit (e.g. 1s, 2m, 3h). A value of zero means don't timeout requests.
+    - name: server
+      shorthand: s
+      usage: The address and port of the Kubernetes API server
+    - name: tls-server-name
+      usage: |
+        Server name to use for server certificate validation. If it is not provided, the hostname used to contact the server is used
+    - name: token
+      usage: Bearer token for authentication to the API server
+    - name: user
+      usage: The name of the kubeconfig user to use
+    - name: username
+      usage: Username for basic authentication to the API server
+    - name: warnings-as-errors
+      default_value: "false"
+      usage: |
+        Treat warnings received from the server as errors and exit with a non-zero exit code
+example: "  # Wait for the pod \"busybox1\" to contain the status condition of type \"Ready\"\n  kubectl wait --for=condition=Ready pod/busybox1\n  \n  # The default value of status condition is true; you can wait for other targets after an equal delimiter (compared after Unicode simple case folding, which is a more general form of case-insensitivity):\n  kubectl wait --for=condition=Ready=false pod/busybox1\n  \n  # Wait for the pod \"busybox1\" to contain the status phase to be \"Running\".\n  kubectl wait --for=jsonpath='{.status.phase}'=Running pod/busybox1\n  \n  # Wait for the pod \"busybox1\" to be deleted, with a timeout of 60s, after having issued the \"delete\" command\n  kubectl delete pod/busybox1\n  kubectl wait --for=delete pod/busybox1 --timeout=60s"
+see_also:
+    - kubectl-kruise - kubectl-kruise controls the OpenKruise CRs

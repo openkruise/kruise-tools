@@ -1,0 +1,70 @@
+## kubectl-kruise
+
+kubectl-kruise controls the OpenKruise CRs
+
+### Synopsis
+
+kubectl-kruise controls the OpenKruise manager.
+
+ Find more information at: https://openkruise.io/
+
+```
+kubectl-kruise [flags]
+```
+
+### Options
+
+```
+      --as string                      Username to impersonate for the operation. User could be a regular user or a service account in a namespace.
+      --as-group stringArray           Group to impersonate for the operation, this flag can be repeated to specify multiple groups.
+      --as-uid string                  UID to impersonate for the operation.
+      --cache-dir string               Default cache directory (default "${HOME}/.kube/cache")
+      --certificate-authority string   Path to a cert file for the certificate authority
+      --client-certificate string      Path to a client certificate file for TLS
+      --client-key string              Path to a client key file for TLS
+      --cluster string                 The name of the kubeconfig cluster to use
+      --context string                 The name of the kubeconfig context to use
+  -h, --help                           help for kubectl-kruise
+      --insecure-skip-tls-verify       If true, the server's certificate will not be checked for validity. This will make your HTTPS connections insecure
+      --kubeconfig string              Path to the kubeconfig file to use for CLI requests.
+      --match-server-version           Require server version to match client version
+  -n, --namespace string               If present, the namespace scope for this CLI request
+      --password string                Password for basic authentication to the API server
+      --profile string                 Name of profile to capture. One of (none|cpu|heap|goroutine|threadcreate|block|mutex) (default "none")
+      --profile-output string          Name of the file to write the profile to (default "profile.pprof")
+      --request-timeout string         The length of time to wait before giving up on a single server request. Non-zero values should contain a corresponding time unit (e.g. 1s, 2m, 3h). A value of zero means don't timeout requests. (default "0")
+  -s, --server string                  The address and port of the Kubernetes API server
+      --tls-server-name string         Server name to use for server certificate validation. If it is not provided, the hostname used to contact the server is used
+      --token string                   Bearer token for authentication to the API server
+      --user string                    The name of the kubeconfig user to use
+      --username string                Username for basic authentication to the API server
+      --warnings-as-errors             Treat warnings received from the server as errors and exit with a non-zero exit code
+```
+
+### SEE ALSO
+
+* [kubectl-kruise api-resources](kubectl-kruise_api-resources.md)	 - Print the supported API resources on the server
+* [kubectl-kruise api-versions](kubectl-kruise_api-versions.md)	 - Print the supported API versions on the server, in the form of "group/version"
+* [kubectl-kruise apply](kubectl-kruise_apply.md)	 - Apply a configuration to a resource by file name or stdin
+* [kubectl-kruise completion](kubectl-kruise_completion.md)	 - Generate the autocompletion script for the specified shell
+* [kubectl-kruise config](kubectl-kruise_config.md)	 - Modify kubeconfig files
+* [kubectl-kruise create](kubectl-kruise_create.md)	 - Create a resource from a file or from stdin.
+* [kubectl-kruise diff](kubectl-kruise_diff.md)	 - Diff the live version against a would-be applied version
+* [kubectl-kruise exec](kubectl-kruise_exec.md)	 - Execute a command in a container
+* [kubectl-kruise expose](kubectl-kruise_expose.md)	 - Take a workload(e.g. deployment, cloneset), service or pod and expose it as a new Kubernetes Service
+* [kubectl-kruise kustomize](kubectl-kruise_kustomize.md)	 - Build a kustomization target from a directory or URL.
+* [kubectl-kruise migrate](kubectl-kruise_migrate.md)	 - Migrate from K8s original workloads to Kruise workloads
+* [kubectl-kruise options](kubectl-kruise_options.md)	 - Print the list of flags inherited by all commands
+* [kubectl-kruise patch](kubectl-kruise_patch.md)	 - Update fields of a resource
+* [kubectl-kruise plugin](kubectl-kruise_plugin.md)	 - Provides utilities for interacting with plugins
+* [kubectl-kruise replace](kubectl-kruise_replace.md)	 - Replace a resource by file name or stdin
+* [kubectl-kruise rollout](kubectl-kruise_rollout.md)	 - Manage the rollout of a resource
+* [kubectl-kruise rollout](kubectl-kruise_rollout.md)	 - Manage the rollout of a resource
+* [kubectl-kruise scale](kubectl-kruise_scale.md)	 - Set a new size for a Deployment, ReplicaSet, CloneSet, or Advanced StatefulSet
+* [kubectl-kruise scaledown](kubectl-kruise_scaledown.md)	 - Scaledown a cloneset with selective Pods
+* [kubectl-kruise set](kubectl-kruise_set.md)	 - Set specific features on objects
+* [kubectl-kruise set](kubectl-kruise_set.md)	 - Set specific features on objects
+* [kubectl-kruise version](kubectl-kruise_version.md)	 - Print the client and server version information
+* [kubectl-kruise wait](kubectl-kruise_wait.md)	 - Experimental: Wait for a specific condition on one or many resources
+
+###### Auto generated by spf13/cobra on 11-Aug-2024

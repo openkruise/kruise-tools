@@ -1,0 +1,123 @@
+name: kubectl-kruise diff
+synopsis: Diff the live version against a would-be applied version
+description: |-
+    Diff configurations specified by file name or stdin between the current online configuration, and the configuration as it would be if applied.
+
+     The output is always YAML.
+
+     KUBECTL_EXTERNAL_DIFF environment variable can be used to select your own diff command. Users can use external commands with params too, example: KUBECTL_EXTERNAL_DIFF="colordiff -N -u"
+
+     By default, the "diff" command available in your path will be run with the "-u" (unified diff) and "-N" (treat absent files as empty) options.
+
+     Exit status: 0 No differences were found. 1 Differences were found. >1 Kubectl or diff failed with an error.
+
+     Note: KUBECTL_EXTERNAL_DIFF, if used, is expected to follow that convention.
+usage: kubectl-kruise diff -f FILENAME
+options:
+    - name: field-manager
+      default_value: kubectl-client-side-apply
+      usage: Name of the manager used to track field ownership.
+    - name: filename
+      shorthand: f
+      default_value: '[]'
+      usage: |
+        Filename, directory, or URL to files contains the configuration to diff
+    - name: force-conflicts
+      default_value: "false"
+      usage: |
+        If true, server-side apply will force the changes against conflicts.
+    - name: help
+      shorthand: h
+      default_value: "false"
+      usage: help for diff
+    - name: kustomize
+      shorthand: k
+      usage: |
+        Process the kustomization directory. This flag can't be used together with -f or -R.
+    - name: prune
+      default_value: "false"
+      usage: |
+        Include resources that would be deleted by pruning. Can be used with -l and default shows all resources would be pruned
+    - name: prune-allowlist
+      default_value: '[]'
+      usage: |
+        Overwrite the default whitelist with <group/version/kind> for --prune
+    - name: recursive
+      shorthand: R
+      default_value: "false"
+      usage: |
+        Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.
+    - name: selector
+      shorthand: l
+      usage: |
+        Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2). Matching objects must satisfy all of the specified label constraints.
+    - name: server-side
+      default_value: "false"
+      usage: If true, apply runs in the server instead of the client.
+inherited_options:
+    - name: as
+      usage: |
+        Username to impersonate for the operation. User could be a regular user or a service account in a namespace.
+    - name: as-group
+      default_value: '[]'
+      usage: |
+        Group to impersonate for the operation, this flag can be repeated to specify multiple groups.
+    - name: as-uid
+      usage: UID to impersonate for the operation.
+    - name: cache-dir
+      default_value: ${HOME}/.kube/cache
+      usage: Default cache directory
+    - name: certificate-authority
+      usage: Path to a cert file for the certificate authority
+    - name: client-certificate
+      usage: Path to a client certificate file for TLS
+    - name: client-key
+      usage: Path to a client key file for TLS
+    - name: cluster
+      usage: The name of the kubeconfig cluster to use
+    - name: context
+      usage: The name of the kubeconfig context to use
+    - name: insecure-skip-tls-verify
+      default_value: "false"
+      usage: |
+        If true, the server's certificate will not be checked for validity. This will make your HTTPS connections insecure
+    - name: kubeconfig
+      usage: Path to the kubeconfig file to use for CLI requests.
+    - name: match-server-version
+      default_value: "false"
+      usage: Require server version to match client version
+    - name: namespace
+      shorthand: "n"
+      usage: If present, the namespace scope for this CLI request
+    - name: password
+      usage: Password for basic authentication to the API server
+    - name: profile
+      default_value: none
+      usage: |
+        Name of profile to capture. One of (none|cpu|heap|goroutine|threadcreate|block|mutex)
+    - name: profile-output
+      default_value: profile.pprof
+      usage: Name of the file to write the profile to
+    - name: request-timeout
+      default_value: "0"
+      usage: |
+        The length of time to wait before giving up on a single server request. Non-zero values should contain a corresponding time unit (e.g. 1s, 2m, 3h). A value of zero means don't timeout requests.
+    - name: server
+      shorthand: s
+      usage: The address and port of the Kubernetes API server
+    - name: tls-server-name
+      usage: |
+        Server name to use for server certificate validation. If it is not provided, the hostname used to contact the server is used
+    - name: token
+      usage: Bearer token for authentication to the API server
+    - name: user
+      usage: The name of the kubeconfig user to use
+    - name: username
+      usage: Username for basic authentication to the API server
+    - name: warnings-as-errors
+      default_value: "false"
+      usage: |
+        Treat warnings received from the server as errors and exit with a non-zero exit code
+example: "  # Diff resources included in pod.json\n  kubectl diff -f pod.json\n  \n  # Diff file read from stdin\n  cat service.yaml | kubectl diff -f -"
+see_also:
+    - kubectl-kruise - kubectl-kruise controls the OpenKruise CRs

@@ -440,6 +440,7 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 	}
 
 	cmds.AddCommand(alpha)
+	cmds.AddCommand(NewCmdGenerateDocs(f, ioStreams))
 	cmds.AddCommand(cmdconfig.NewCmdConfig(clientcmd.NewDefaultPathOptions(), ioStreams))
 	cmds.AddCommand(plugin.NewCmdPlugin(ioStreams))
 	cmds.AddCommand(version.NewCmdVersion(f, ioStreams))
