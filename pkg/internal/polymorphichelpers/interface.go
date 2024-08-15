@@ -51,6 +51,10 @@ type StatusViewerFunc func(mapping *meta.RESTMapping) (StatusViewer, error)
 // StatusViewerFn gives a way to easily override the function for unit testing if needed
 var StatusViewerFn StatusViewerFunc = statusViewer
 
+type RolloutViewerFunc func(mapping *meta.RESTMapping) (RolloutViewer, error)
+
+var RolloutViewerFn RolloutViewerFunc = rolloutViewer
+
 // UpdatePodSpecForObjectFunc will call the provided function on the pod spec this object supports,
 // return false if no pod spec is supported, or return an error.
 type UpdatePodSpecForObjectFunc func(obj runtime.Object, fn func(*v1.PodSpec) error) (bool, error)
