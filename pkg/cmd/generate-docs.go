@@ -57,6 +57,8 @@ func generateDocs(cmd *cobra.Command) error {
 	if directory == "" {
 		directory = defaultDocDir
 	}
+	// Remove the commands from the root command tree
+	removeCmds(cmd.Root(), []string{"exec", "apply", "wait", "diff", "options", "help", "api-resources", "api-versions", "patch", "plugin", "scale", "replace", "options", "kustomize", "version", "config", "completion"})
 
 	err = os.MkdirAll(directory, os.ModePerm)
 	if err != nil {
@@ -76,4 +78,29 @@ func generateDocs(cmd *cobra.Command) error {
 	}
 	fmt.Println("documentation generated successfully")
 	return nil
+}
+
+func removeCmds(rootCmd *cobra.Command, cmdsToRemove []string) {
+	// Keep track of command names to detect duplicates
+	encountered := make(map[string]bool)
+
+	for _, cmdName := range cmdsToRemove {
+		for _, cmd := range rootCmd.Commands() {
+			if cmd.Name() == cmdName {
+				rootCmd.RemoveCommand(cmd)
+			}
+		}
+	}
+
+	// Remove duplicates
+	var uniqueCmds []*cobra.Command
+	for _, cmd := range rootCmd.Commands() {
+		if encountered[cmd.Name()] {
+			continue
+		}
+		encountered[cmd.Name()] = true
+		uniqueCmds = append(uniqueCmds, cmd)
+	}
+	rootCmd.ResetCommands()
+	rootCmd.AddCommand(uniqueCmds...)
 }

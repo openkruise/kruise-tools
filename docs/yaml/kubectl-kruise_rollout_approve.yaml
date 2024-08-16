@@ -50,7 +50,7 @@ inherited_options:
     - name: as-uid
       usage: UID to impersonate for the operation.
     - name: cache-dir
-      default_value: ${HOME}/.kube/cache
+      default_value: $HOME/.kube/cache
       usage: Default cache directory
     - name: certificate-authority
       usage: Path to a cert file for the certificate authority
