@@ -119,7 +119,7 @@ func (o *DescribeRolloutOptions) Complete(f cmdutil.Factory, args []string) erro
 	if err != nil {
 		return err
 	}
-	
+
 	rolloutsClientset, err := rolloutsv1beta1.NewForConfig(config)
 	if err != nil {
 		return err
@@ -138,15 +138,15 @@ func (o *DescribeRolloutOptions) Validate() error {
 
 func (o *DescribeRolloutOptions) Run() error {
 	rolloutName := o.Resources[0]
-    
-    r := o.Builder().
-        WithScheme(internalapi.GetScheme(), scheme.Scheme.PrioritizedVersionsAllGroups()...).
-        NamespaceParam(o.Namespace).DefaultNamespace().
-        ResourceNames("rollouts.rollouts.kruise.io", rolloutName). 
-        ContinueOnError().
-        Latest().
-        Flatten().
-        Do()
+
+	r := o.Builder().
+		WithScheme(internalapi.GetScheme(), scheme.Scheme.PrioritizedVersionsAllGroups()...).
+		NamespaceParam(o.Namespace).DefaultNamespace().
+		ResourceNames("rollouts.rollouts.kruise.io", rolloutName).
+		ContinueOnError().
+		Latest().
+		Flatten().
+		Do()
 
 	if err := r.Err(); err != nil {
 		return err
@@ -186,7 +186,7 @@ func (o *DescribeRolloutOptions) watchRollout(r *resource.Result) error {
 	watcher, err := o.RolloutsClient.Watch(context.TODO(), metav1.ListOptions{
 		FieldSelector: "metadata.name=" + info.Name,
 	})
-	
+
 	if err != nil {
 		return err
 	}
@@ -227,50 +227,50 @@ func (o *DescribeRolloutOptions) clearScreen() {
 }
 
 func (o *DescribeRolloutOptions) GetResources(rollout *rolloutsapi.RolloutSpec) (*WorkloadInfo, error) {
-    resources := []string{rollout.WorkloadRef.Kind + "/" + rollout.WorkloadRef.Name}
-    r := o.Builder().
-        WithScheme(internalapi.GetScheme(), scheme.Scheme.PrioritizedVersionsAllGroups()...).
-        NamespaceParam(o.Namespace).DefaultNamespace().
-        ResourceTypeOrNameArgs(true, resources...).
-        ContinueOnError().
-        Latest().
-        Flatten().
-        Do()
-    
-    if err := r.Err(); err != nil {
-        return nil, err
-    }
+	resources := []string{rollout.WorkloadRef.Kind + "/" + rollout.WorkloadRef.Name}
+	r := o.Builder().
+		WithScheme(internalapi.GetScheme(), scheme.Scheme.PrioritizedVersionsAllGroups()...).
+		NamespaceParam(o.Namespace).DefaultNamespace().
+		ResourceTypeOrNameArgs(true, resources...).
+		ContinueOnError().
+		Latest().
+		Flatten().
+		Do()
 
-    obj, err := r.Object()
-    if err != nil {
-        return nil, err
-    }
+	if err := r.Err(); err != nil {
+		return nil, err
+	}
+
+	obj, err := r.Object()
+	if err != nil {
+		return nil, err
+	}
 
 	info := &WorkloadInfo{}
 	objValue := reflect.ValueOf(obj).Elem()
-    info.Name = objValue.FieldByName("Name").String()
-    info.Kind = objValue.Type().Name()
+	info.Name = objValue.FieldByName("Name").String()
+	info.Kind = objValue.Type().Name()
 
-    podTemplateSpec := objValue.FieldByName("Spec").FieldByName("Template").FieldByName("Spec")
-    containers := podTemplateSpec.FieldByName("Containers")
-    for i := 0; i < containers.Len(); i++ {
-        container := containers.Index(i)
-        info.Images = append(info.Images, container.FieldByName("Image").String())
-    }
+	podTemplateSpec := objValue.FieldByName("Spec").FieldByName("Template").FieldByName("Spec")
+	containers := podTemplateSpec.FieldByName("Containers")
+	for i := 0; i < containers.Len(); i++ {
+		container := containers.Index(i)
+		info.Images = append(info.Images, container.FieldByName("Image").String())
+	}
 
-    spec := objValue.FieldByName("Spec")
-    status := objValue.FieldByName("Status")
+	spec := objValue.FieldByName("Spec")
+	status := objValue.FieldByName("Status")
 
-    if replicas := spec.FieldByName("Replicas"); replicas.IsValid() && !replicas.IsNil() {
-        info.Replicas.Desired = int32(replicas.Elem().Int())
-    }
+	if replicas := spec.FieldByName("Replicas"); replicas.IsValid() && !replicas.IsNil() {
+		info.Replicas.Desired = int32(replicas.Elem().Int())
+	}
 
-    info.Replicas.Current = int32(status.FieldByName("Replicas").Int())
-    info.Replicas.Updated = int32(status.FieldByName("UpdatedReplicas").Int())
-    info.Replicas.Ready = int32(status.FieldByName("ReadyReplicas").Int())
-    info.Replicas.Available = int32(status.FieldByName("AvailableReplicas").Int())
+	info.Replicas.Current = int32(status.FieldByName("Replicas").Int())
+	info.Replicas.Updated = int32(status.FieldByName("UpdatedReplicas").Int())
+	info.Replicas.Ready = int32(status.FieldByName("ReadyReplicas").Int())
+	info.Replicas.Available = int32(status.FieldByName("AvailableReplicas").Int())
 
-    return info, nil
+	return info, nil
 }
 
 func (o *DescribeRolloutOptions) colorizeIcon(phase string) string {
@@ -321,7 +321,6 @@ func (o *DescribeRolloutOptions) printRolloutInfo(rollout *rolloutsapi.Rollout) 
 		}
 	}
 
-	
 	fmt.Fprint(o.Out, "Replicas:\n")
 	fmt.Fprintf(o.Out, tableFormat, " Desired:", info.Replicas.Desired)
 	fmt.Fprintf(o.Out, tableFormat, " Updated:", info.Replicas.Updated)
