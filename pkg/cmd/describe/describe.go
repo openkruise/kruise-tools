@@ -27,11 +27,11 @@ import (
 
 var (
 	describeLong = templates.LongDesc(i18n.T(`
-		Show details of a specific resource or group of resources.`))
+		Show details of a rollout.`))
 
 	describeExample = templates.Examples(`
-		# Describe the rollout of a resource  
-		kubectl-kruise describe rollout daemonset/foo`)
+		# Describe the rollout named rollout-demo
+		kubectl-kruise describe rollout rollout-demo`)
 )
 
 // NewCmdRollout returns a Command instance for 'rollout' sub command

@@ -17,10 +17,18 @@ limitations under the License.
 package polymorphichelpers
 
 import (
-	"k8s.io/apimachinery/pkg/api/meta"
+	"fmt"
+
+	"k8s.io/apimachinery/pkg/runtime"
+
+	rolloutschema "github.com/openkruise/kruise-rollout-api/rollouts/v1beta1"
 )
 
 // statusViewer returns a StatusViewer for printing rollout status.
-func rolloutViewer(mapping *meta.RESTMapping) (RolloutViewer, error) {
-	return nil, nil
+func rolloutViewer(obj runtime.Object) (*rolloutschema.Rollout, error) {
+	rollout, ok := obj.(*rolloutschema.Rollout)
+	if !ok {
+		return nil, fmt.Errorf("Object is not a rollout")
+	}
+	return rollout, nil
 }

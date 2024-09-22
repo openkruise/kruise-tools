@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	rolloutsapi "github.com/openkruise/kruise-rollout-api/rollouts/v1beta1"
 	"k8s.io/client-go/rest"
 )
 
@@ -51,7 +52,7 @@ type StatusViewerFunc func(mapping *meta.RESTMapping) (StatusViewer, error)
 // StatusViewerFn gives a way to easily override the function for unit testing if needed
 var StatusViewerFn StatusViewerFunc = statusViewer
 
-type RolloutViewerFunc func(mapping *meta.RESTMapping) (RolloutViewer, error)
+type RolloutViewerFunc func(obj runtime.Object) (*rolloutsapi.Rollout, error)
 
 var RolloutViewerFn RolloutViewerFunc = rolloutViewer
 
