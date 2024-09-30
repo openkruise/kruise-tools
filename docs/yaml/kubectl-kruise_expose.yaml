@@ -1,0 +1,169 @@
+name: kubectl-kruise expose
+synopsis: |
+    Take a workload(e.g. deployment, cloneset), service or pod and expose it as a new Kubernetes Service
+description: |-
+    Expose a resource as a new Kubernetes service.
+
+     Looks up a deployment, service, replica set, replication controller or pod by name and uses the selector for that resource as the selector for a new service on the specified port. A deployment or replica set will be exposed as a service only if its selector is convertible to a selector that service supports, i.e. when the selector contains only the matchLabels component. Note that if no port is specified via --port and the exposed resource has multiple ports, all will be re-used by the new service. Also if no labels are specified, the new service will re-use the labels from the resource it exposes.
+
+     Possible resources include (case insensitive):
+
+     pod (po), service (svc), replicationcontroller (rc), cloneset (clone), deployment (deploy), replicaset (rs)
+usage: kubectl-kruise expose (-f FILENAME | TYPE NAME) [--port=port] [--protocol=TCP|UDP|SCTP] [--target-port=number-or-name] [--name=name] [--external-ip=external-ip-of-service] [--type=type]
+options:
+    - name: allow-missing-template-keys
+      default_value: "true"
+      usage: |
+        If true, ignore any errors in templates when a field or map key is missing in the template. Only applies to golang and jsonpath output formats.
+    - name: cluster-ip
+      usage: |
+        ClusterIP to be assigned to the service. Leave empty to auto-allocate, or set to 'None' to create a headless service.
+    - name: container-port
+      usage: Synonym for --target-port
+    - name: dry-run
+      default_value: none
+      usage: |
+        Must be "none", "server", or "client". If client strategy, only print the object that would be sent, without sending it. If server strategy, submit server-side request without persisting the resource.
+    - name: external-ip
+      usage: |
+        Additional external IP address (not managed by Kubernetes) to accept for the service. If this IP is routed to a node, the service can be accessed by this IP in addition to its generated service IP.
+    - name: field-manager
+      default_value: kubectl-expose
+      usage: Name of the manager used to track field ownership.
+    - name: filename
+      shorthand: f
+      default_value: '[]'
+      usage: |
+        Filename, directory, or URL to files identifying the resource to expose a service
+    - name: generator
+      default_value: service/v2
+      usage: |
+        The name of the API generator to use. There are 2 generators: 'service/v1' and 'service/v2'. The only difference between them is that service port in v1 is named 'default', while it is left unnamed in v2. Default is 'service/v2'.
+    - name: help
+      shorthand: h
+      default_value: "false"
+      usage: help for expose
+    - name: kustomize
+      shorthand: k
+      usage: |
+        Process the kustomization directory. This flag can't be used together with -f or -R.
+    - name: labels
+      shorthand: l
+      usage: Labels to apply to the service created by this call.
+    - name: load-balancer-ip
+      usage: |
+        IP to assign to the LoadBalancer. If empty, an ephemeral IP will be created and used (cloud-provider specific).
+    - name: name
+      usage: The name for the newly created object.
+    - name: output
+      shorthand: o
+      usage: |
+        Output format. One of: (json, yaml, name, go-template, go-template-file, template, templatefile, jsonpath, jsonpath-as-json, jsonpath-file).
+    - name: overrides
+      usage: |
+        An inline JSON override for the generated object. If this is non-empty, it is used to override the generated object. Requires that the object supply a valid apiVersion field.
+    - name: port
+      usage: |
+        The port that the service should serve on. Copied from the resource being exposed, if unspecified
+    - name: protocol
+      usage: |
+        The network protocol for the service to be created. Default is 'TCP'.
+    - name: record
+      default_value: "false"
+      usage: |
+        Record current kubectl command in the resource annotation. If set to false, do not record the command. If set to true, record the command. If not set, default to updating the existing annotation value only if one already exists.
+    - name: recursive
+      shorthand: R
+      default_value: "false"
+      usage: |
+        Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.
+    - name: save-config
+      default_value: "false"
+      usage: |
+        If true, the configuration of current object will be saved in its annotation. Otherwise, the annotation will be unchanged. This flag is useful when you want to perform kubectl apply on this object in the future.
+    - name: selector
+      usage: |
+        A label selector to use for this service. Only equality-based selector requirements are supported. If empty (the default) infer the selector from the replication controller or replica set.)
+    - name: session-affinity
+      usage: |
+        If non-empty, set the session affinity for the service to this; legal values: 'None', 'ClientIP'
+    - name: show-managed-fields
+      default_value: "false"
+      usage: |
+        If true, keep the managedFields when printing objects in JSON or YAML format.
+    - name: target-port
+      usage: |
+        Name or number for the port on the container that the service should direct traffic to. Optional.
+    - name: template
+      usage: |
+        Template string or path to template file to use when -o=go-template, -o=go-template-file. The template format is golang templates [http://golang.org/pkg/text/template/#pkg-overview].
+    - name: type
+      usage: |
+        Type for this service: ClusterIP, NodePort, LoadBalancer, or ExternalName. Default is 'ClusterIP'.
+inherited_options:
+    - name: as
+      usage: |
+        Username to impersonate for the operation. User could be a regular user or a service account in a namespace.
+    - name: as-group
+      default_value: '[]'
+      usage: |
+        Group to impersonate for the operation, this flag can be repeated to specify multiple groups.
+    - name: as-uid
+      usage: UID to impersonate for the operation.
+    - name: cache-dir
+      default_value: $HOME/.kube/cache
+      usage: Default cache directory
+    - name: certificate-authority
+      usage: Path to a cert file for the certificate authority
+    - name: client-certificate
+      usage: Path to a client certificate file for TLS
+    - name: client-key
+      usage: Path to a client key file for TLS
+    - name: cluster
+      usage: The name of the kubeconfig cluster to use
+    - name: context
+      usage: The name of the kubeconfig context to use
+    - name: insecure-skip-tls-verify
+      default_value: "false"
+      usage: |
+        If true, the server's certificate will not be checked for validity. This will make your HTTPS connections insecure
+    - name: kubeconfig
+      usage: Path to the kubeconfig file to use for CLI requests.
+    - name: match-server-version
+      default_value: "false"
+      usage: Require server version to match client version
+    - name: namespace
+      shorthand: "n"
+      usage: If present, the namespace scope for this CLI request
+    - name: password
+      usage: Password for basic authentication to the API server
+    - name: profile
+      default_value: none
+      usage: |
+        Name of profile to capture. One of (none|cpu|heap|goroutine|threadcreate|block|mutex)
+    - name: profile-output
+      default_value: profile.pprof
+      usage: Name of the file to write the profile to
+    - name: request-timeout
+      default_value: "0"
+      usage: |
+        The length of time to wait before giving up on a single server request. Non-zero values should contain a corresponding time unit (e.g. 1s, 2m, 3h). A value of zero means don't timeout requests.
+    - name: server
+      shorthand: s
+      usage: The address and port of the Kubernetes API server
+    - name: tls-server-name
+      usage: |
+        Server name to use for server certificate validation. If it is not provided, the hostname used to contact the server is used
+    - name: token
+      usage: Bearer token for authentication to the API server
+    - name: user
+      usage: The name of the kubeconfig user to use
+    - name: username
+      usage: Username for basic authentication to the API server
+    - name: warnings-as-errors
+      default_value: "false"
+      usage: |
+        Treat warnings received from the server as errors and exit with a non-zero exit code
+example: "  # Create a service for an nginx cloneset, which serves on port 80 and connects to the containers on port 8000.\n  kubectl kruise expose cloneset nginx --port=80 --target-port=8000\n  \n  # Create a service for a replicated nginx, which serves on port 80 and connects to the containers on port 8000.\n  kubectl expose rc nginx --port=80 --target-port=8000\n  \n  # Create a service for a replication controller identified by type and name specified in \"nginx-controller.yaml\", which serves on port 80 and connects to the containers on port 8000.\n  kubectl expose -f nginx-controller.yaml --port=80 --target-port=8000\n  \n  # Create a service for a pod valid-pod, which serves on port 444 with the name \"frontend\"\n  kubectl expose pod valid-pod --port=444 --name=frontend\n  \n  # Create a second service based on the above service, exposing the container port 8443 as port 443 with the name \"nginx-https\"\n  kubectl expose service nginx --port=443 --target-port=8443 --name=nginx-https\n  \n  # Create a service for a replicated streaming application on port 4100 balancing UDP traffic and named 'video-stream'.\n  kubectl expose rc streamer --port=4100 --protocol=UDP --name=video-stream\n  \n  # Create a service for a replicated nginx using replica set, which serves on port 80 and connects to the containers on port 8000.\n  kubectl expose rs nginx --port=80 --target-port=8000\n  \n  # Create a service for an nginx deployment, which serves on port 80 and connects to the containers on port 8000.\n  kubectl expose deployment nginx --port=80 --target-port=8000"
+see_also:
+    - kubectl-kruise - kubectl-kruise controls the OpenKruise CRs
