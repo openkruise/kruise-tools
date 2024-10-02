@@ -21,6 +21,8 @@ import (
 	"io"
 	"os"
 
+	"github.com/spf13/cobra"
+
 	"github.com/openkruise/kruise-tools/pkg/cmd/create"
 	cmdexec "github.com/openkruise/kruise-tools/pkg/cmd/exec"
 	"github.com/openkruise/kruise-tools/pkg/cmd/expose"
@@ -28,7 +30,6 @@ import (
 	krollout "github.com/openkruise/kruise-tools/pkg/cmd/rollout"
 	"github.com/openkruise/kruise-tools/pkg/cmd/scaledown"
 	kset "github.com/openkruise/kruise-tools/pkg/cmd/set"
-	"github.com/spf13/cobra"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -441,6 +442,7 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 
 	cmds.AddCommand(alpha)
 	cmds.AddCommand(NewCmdGenerateDocs(f, ioStreams))
+	cmds.AddCommand(NewAutoCompleteCommand())
 	cmds.AddCommand(cmdconfig.NewCmdConfig(clientcmd.NewDefaultPathOptions(), ioStreams))
 	cmds.AddCommand(plugin.NewCmdPlugin(ioStreams))
 	cmds.AddCommand(version.NewCmdVersion(f, ioStreams))
