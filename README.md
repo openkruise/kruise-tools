@@ -46,6 +46,27 @@ Same to `install manually`.
 
 ## Usage
 
+### completion
+```bash
+To load auto completions:
+
+Bash:
+  $ source <(kubectl-kruise completion bash)
+
+Zsh:
+  # If shell completion is not already enabled in your environment,
+  # you will need to enable it.  You can execute the following once:
+  $ echo "autoload -U compinit; compinit" >> ~/.zshrc
+
+  # To load completions for each session, execute once:
+  $ kubectl-kruise completion zsh > "${fpath[1]}/_kubectl-kruise"
+
+Fish:
+  $ kubectl-kruise completion fish | source
+
+PowerShell:
+  PS> kubectl-kruise completion powershell | Out-String | Invoke-Expression
+
 ### expose
 
 Take a workload(e.g. deployment, cloneset), service or pod and expose it as a new Kubernetes Service.
