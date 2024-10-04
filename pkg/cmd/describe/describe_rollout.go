@@ -290,13 +290,13 @@ func (o *DescribeRolloutOptions) GetResources(rollout *rolloutsapi.Rollout) (*Wo
 	switch o := obj.(type) {
 	case *appsv1.Deployment:
 		workloadInfo.Replicas.Desired = *o.Spec.Replicas
-		workloadInfo.Replicas.Current = o.Status.AvailableReplicas
+		workloadInfo.Replicas.Current = o.Status.Replicas
 		workloadInfo.Replicas.Updated = o.Status.UpdatedReplicas
 		workloadInfo.Replicas.Ready = o.Status.ReadyReplicas
 		workloadInfo.Replicas.Available = o.Status.AvailableReplicas
 	case *appsv1.StatefulSet:
 		workloadInfo.Replicas.Desired = *o.Spec.Replicas
-		workloadInfo.Replicas.Current = o.Status.CurrentReplicas
+		workloadInfo.Replicas.Current = o.Status.Replicas
 		workloadInfo.Replicas.Updated = o.Status.UpdatedReplicas
 		workloadInfo.Replicas.Ready = o.Status.ReadyReplicas
 		workloadInfo.Replicas.Available = o.Status.AvailableReplicas
@@ -308,13 +308,13 @@ func (o *DescribeRolloutOptions) GetResources(rollout *rolloutsapi.Rollout) (*Wo
 		workloadInfo.Replicas.Available = o.Status.NumberAvailable
 	case *kruiseappsv1beta1.StatefulSet:
 		workloadInfo.Replicas.Desired = *o.Spec.Replicas
-		workloadInfo.Replicas.Current = o.Status.CurrentReplicas
+		workloadInfo.Replicas.Current = o.Status.Replicas
 		workloadInfo.Replicas.Updated = o.Status.UpdatedReplicas
 		workloadInfo.Replicas.Ready = o.Status.ReadyReplicas
 		workloadInfo.Replicas.Available = o.Status.AvailableReplicas
 	case *kruiseappsv1alpha1.CloneSet:
 		workloadInfo.Replicas.Desired = *o.Spec.Replicas
-		workloadInfo.Replicas.Current = o.Status.AvailableReplicas
+		workloadInfo.Replicas.Current = o.Status.Replicas
 		workloadInfo.Replicas.Updated = o.Status.UpdatedReplicas
 		workloadInfo.Replicas.Ready = o.Status.ReadyReplicas
 		workloadInfo.Replicas.Available = o.Status.AvailableReplicas
@@ -367,7 +367,7 @@ func (o *DescribeRolloutOptions) GetResources(rollout *rolloutsapi.Rollout) (*Wo
 			Revision string
 		}{
 			Name:     pod.Name,
-			BatchID:  pod.Labels["kruise.io/batch-id"],
+			BatchID:  pod.Labels["rollouts.kruise.io/rollout-batch-id"],
 			Status:   string(pod.Status.Phase),
 			Age:      duration.HumanDuration(time.Since(pod.CreationTimestamp.Time)),
 			Restarts: fmt.Sprintf("%v (%v ago)", strconv.Itoa(int(pod.Status.ContainerStatuses[0].RestartCount)), duration.HumanDuration(time.Since(pod.Status.ContainerStatuses[0].LastTerminationState.Terminated.FinishedAt.Time))),
@@ -437,21 +437,50 @@ func (o *DescribeRolloutOptions) printRolloutInfo(rollout *rolloutsapi.Rollout) 
 		fmt.Fprintf(o.Out, tableFormat, " Step:", strconv.Itoa(len(canary.Steps))+"/"+strconv.Itoa(int(rollout.Status.CanaryStatus.CurrentStepIndex)))
 		fmt.Fprint(o.Out, " Steps:\n")
 		currentStepIndex := int(rollout.Status.CanaryStatus.CurrentStepIndex)
-		for step := range canary.Steps {
-			isCurrentStep := (step + 1) == currentStepIndex
+		for i, step := range canary.Steps {
+			isCurrentStep := (i + 1) == currentStepIndex
 			if isCurrentStep {
 				fmt.Fprint(o.Out, "\033[32m")
 			}
 
-			if canary.Steps[step].Replicas != nil {
-				fmt.Fprintf(o.Out, tableFormat, "  -  Replicas: ", canary.Steps[step].Replicas)
+			if step.Replicas != nil {
+				fmt.Fprintf(o.Out, tableFormat, "  -  Replicas: ", step.Replicas)
 			}
-			if canary.Steps[step].Traffic != nil {
-				fmt.Fprintf(o.Out, tableFormat, "     Traffic: ", *canary.Steps[step].Traffic)
+			if step.Traffic != nil {
+				fmt.Fprintf(o.Out, tableFormat, "     Traffic: ", *step.Traffic)
+			}
+
+			if step.Matches != nil {
+				fmt.Fprintf(o.Out, tableFormat, "     Matches: ", step.Matches)
 			}
 
 			if isCurrentStep {
 				fmt.Fprint(o.Out, "\033[0m") // Reset color
+			}
+		}
+
+		// Traffic Routings
+		if len(rollout.Spec.Strategy.Canary.TrafficRoutings) > 0 {
+			fmt.Fprint(o.Out, " Traffic Routings:\n")
+			for _, trafficRouting := range rollout.Spec.Strategy.Canary.TrafficRoutings {
+				fmt.Fprintf(o.Out, tableFormat, "  -  Service: ", trafficRouting.Service)
+				if trafficRouting.Ingress != nil {
+					fmt.Fprintln(o.Out, `     Ingress: `)
+					fmt.Fprintf(o.Out, tableFormat, "      classType: ", trafficRouting.Ingress.ClassType)
+					fmt.Fprintf(o.Out, tableFormat, "      name: ", trafficRouting.Ingress.Name)
+				}
+				if trafficRouting.Gateway != nil {
+					fmt.Fprintln(o.Out, `     Gateway: `)
+					fmt.Fprintf(o.Out, tableFormat, "      HttpRouteName: ", trafficRouting.Gateway.HTTPRouteName)
+				}
+				if trafficRouting.CustomNetworkRefs != nil {
+					fmt.Fprintln(o.Out, `     CustomNetworkRefs: `)
+					for _, customNetworkRef := range trafficRouting.CustomNetworkRefs {
+						fmt.Fprintf(o.Out, tableFormat, "      name: ", customNetworkRef.Name)
+						fmt.Fprintf(o.Out, tableFormat, "      kind: ", customNetworkRef.Kind)
+						fmt.Fprintf(o.Out, tableFormat, "      apiVersion: ", customNetworkRef.APIVersion)
+					}
+				}
 			}
 		}
 	}
