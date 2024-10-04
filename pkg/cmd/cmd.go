@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"github.com/openkruise/kruise-tools/pkg/cmd/create"
+	"github.com/openkruise/kruise-tools/pkg/cmd/describe"
 	cmdexec "github.com/openkruise/kruise-tools/pkg/cmd/exec"
 	"github.com/openkruise/kruise-tools/pkg/cmd/expose"
 	"github.com/openkruise/kruise-tools/pkg/cmd/migrate"
@@ -440,6 +441,7 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 	}
 
 	cmds.AddCommand(alpha)
+	cmds.AddCommand(describe.NewCmdDescibe(f, ioStreams))
 	cmds.AddCommand(NewCmdGenerateDocs(f, ioStreams))
 	cmds.AddCommand(cmdconfig.NewCmdConfig(clientcmd.NewDefaultPathOptions(), ioStreams))
 	cmds.AddCommand(plugin.NewCmdPlugin(ioStreams))
