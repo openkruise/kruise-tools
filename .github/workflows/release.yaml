@@ -20,9 +20,9 @@ jobs:
       GO_BUILD_ENV: GO111MODULE=on CGO_ENABLED=0
       DIST_DIRS: find * -type d -exec
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Get release
@@ -80,7 +80,7 @@ jobs:
           asset_name: resourcedistribution-generator-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.tar.gz
           asset_content_type: binary/octet-stream
       - name: Post sha256
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: sha256sums
           path: ./_bin/sha256-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.txt
@@ -91,7 +91,7 @@ jobs:
     name: upload-sha256sums
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Get release
         id: get_release
         uses: bruceadams/get-release@v1.2.2
