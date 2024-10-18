@@ -99,7 +99,7 @@ $ kubectl kruise rollout status statefulsets/sts1
 $ kubectl kruise rollout status statefulsets.apps.kruise.io/sts2
 
 # approve a kruise rollout resource named "rollout-demo" in "ns-demo" namespace
-$ kubectl kruise rollout approve rollout-demo -n ns-demo`
+$ kubectl kruise rollout approve rollout/rollout-demo -n ns-demo`
 
 # undo a kruise rollout resource
 $ kubectl kruise rollout undo rollout/rollout-demo

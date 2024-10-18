@@ -19,9 +19,6 @@ package rollout
 import (
 	"fmt"
 
-	internalapi "github.com/openkruise/kruise-tools/pkg/api"
-	"github.com/openkruise/kruise-tools/pkg/cmd/util"
-	internalpolymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -33,6 +30,10 @@ import (
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
+
+	internalapi "github.com/openkruise/kruise-tools/pkg/api"
+	"github.com/openkruise/kruise-tools/pkg/cmd/util"
+	internalpolymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 )
 
 // ApproveOptions is the start of the data required to perform the operation.  As new fields are added, add them here instead of
@@ -63,7 +64,7 @@ var (
 	ApproveExample = templates.Examples(`
 		# approve a kruise rollout resource named "rollout-demo" in "ns-demo" namespace
 		
-		kubectl-kruise rollout approve rollout-demo -n ns-demo`)
+		kubectl-kruise rollout approve rollout/rollout-demo -n ns-demo`)
 )
 
 // NewRolloutApproveOptions returns an initialized ApproveOptions instance
