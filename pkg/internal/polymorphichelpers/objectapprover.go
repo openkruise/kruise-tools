@@ -20,7 +20,8 @@ import (
 	"errors"
 	"fmt"
 
-	rolloutsapi "github.com/openkruise/kruise-rollout-api/rollouts/v1beta1"
+	rolloutsapiv1alpha1 "github.com/openkruise/kruise-rollout-api/rollouts/v1alpha1"
+	rolloutsapiv1beta1 "github.com/openkruise/kruise-rollout-api/rollouts/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubectl/pkg/scheme"
 )
@@ -28,12 +29,18 @@ import (
 // defaultObjectApprover currently only support Kruise Rollout.
 func defaultObjectApprover(obj runtime.Object) ([]byte, error) {
 	switch obj := obj.(type) {
-	case *rolloutsapi.Rollout:
-		if obj.Status.CanaryStatus == nil || obj.Status.CanaryStatus.CurrentStepState != rolloutsapi.CanaryStepStatePaused {
+	case *rolloutsapiv1alpha1.Rollout:
+		if obj.Status.CanaryStatus == nil || obj.Status.CanaryStatus.CurrentStepState != rolloutsapiv1alpha1.CanaryStepStatePaused {
 			return nil, errors.New("does not allow to approve, because current canary state is not 'StepPaused'")
 		}
-		obj.Status.CanaryStatus.CurrentStepState = rolloutsapi.CanaryStepStateReady
-		return runtime.Encode(scheme.Codecs.LegacyCodec(rolloutsapi.GroupVersion), obj)
+		obj.Status.CanaryStatus.CurrentStepState = rolloutsapiv1alpha1.CanaryStepStateReady
+		return runtime.Encode(scheme.Codecs.LegacyCodec(rolloutsapiv1alpha1.GroupVersion), obj)
+	case *rolloutsapiv1beta1.Rollout:
+		if obj.Status.CanaryStatus == nil || obj.Status.CanaryStatus.CurrentStepState != rolloutsapiv1beta1.CanaryStepStatePaused {
+			return nil, errors.New("does not allow to approve, because current canary state is not 'StepPaused'")
+		}
+		obj.Status.CanaryStatus.CurrentStepState = rolloutsapiv1beta1.CanaryStepStateReady
+		return runtime.Encode(scheme.Codecs.LegacyCodec(rolloutsapiv1beta1.GroupVersion), obj)
 
 	default:
 		return nil, fmt.Errorf("approving is not supported")
