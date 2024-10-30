@@ -38,7 +38,11 @@ type control struct {
 
 func NewControl(cfg *rest.Config) (creation.Control, error) {
 	scheme := api.GetScheme()
-	mapper, err := apiutil.NewDynamicRESTMapper(cfg)
+	c, err := rest.HTTPClientFor(cfg)
+	if err != nil {
+		return nil, err
+	}
+	mapper, err := apiutil.NewDynamicRESTMapper(cfg, c)
 	if err != nil {
 		return nil, err
 	}

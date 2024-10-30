@@ -86,7 +86,6 @@ type CreateCRROptions struct {
 	ClientSet            kubernetes.Interface
 	EnforceNamespace     bool
 	DryRunStrategy       cmdutil.DryRunStrategy
-	DryRunVerifier       *resource.QueryParamVerifier
 	Builder              *resource.Builder
 	FieldManager         string
 	CreateAnnotation     bool
@@ -175,11 +174,6 @@ func (o *CreateCRROptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args 
 	if err != nil {
 		return err
 	}
-	dynamicClient, err := f.DynamicClient()
-	if err != nil {
-		return err
-	}
-	o.DryRunVerifier = resource.NewQueryParamVerifier(dynamicClient, f.OpenAPIGetter(), resource.QueryParamDryRun)
 	cmdutil.PrintFlagsWithDryRunStrategy(o.PrintFlags, o.DryRunStrategy)
 	printer, err := o.PrintFlags.ToPrinter()
 	if err != nil {
@@ -224,9 +218,6 @@ func (o *CreateCRROptions) Run() error {
 			createOptions.FieldManager = o.FieldManager
 		}
 		if o.DryRunStrategy == cmdutil.DryRunServer {
-			if err := o.DryRunVerifier.HasSupport(crr.GroupVersionKind()); err != nil {
-				return err
-			}
 			createOptions.DryRun = []string{metav1.DryRunAll}
 		}
 		var err error

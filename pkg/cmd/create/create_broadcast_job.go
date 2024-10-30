@@ -69,7 +69,6 @@ type CreateBroadcastJobOptions struct {
 	EnforceNamespace     bool
 	kruisev1alpha1Client kruiseclientsets.Interface
 	DryRunStrategy       cmdutil.DryRunStrategy
-	DryRunVerifier       *resource.QueryParamVerifier
 	Builder              *resource.Builder
 	FieldManager         string
 	CreateAnnotation     bool
@@ -144,11 +143,6 @@ func (o *CreateBroadcastJobOptions) Complete(f cmdutil.Factory, cmd *cobra.Comma
 	if err != nil {
 		return err
 	}
-	dynamicClient, err := f.DynamicClient()
-	if err != nil {
-		return err
-	}
-	o.DryRunVerifier = resource.NewQueryParamVerifier(dynamicClient, f.OpenAPIGetter(), resource.QueryParamDryRun)
 	cmdutil.PrintFlagsWithDryRunStrategy(o.PrintFlags, o.DryRunStrategy)
 	printer, err := o.PrintFlags.ToPrinter()
 	if err != nil {
@@ -214,9 +208,6 @@ func (o *CreateBroadcastJobOptions) Run() error {
 			createOptions.FieldManager = o.FieldManager
 		}
 		if o.DryRunStrategy == cmdutil.DryRunServer {
-			if err := o.DryRunVerifier.HasSupport(job.GroupVersionKind()); err != nil {
-				return err
-			}
 			createOptions.DryRun = []string{metav1.DryRunAll}
 		}
 		var err error

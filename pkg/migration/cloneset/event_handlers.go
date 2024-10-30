@@ -30,7 +30,7 @@ type cloneSetHandler struct {
 
 var _ toolscache.ResourceEventHandler = &cloneSetHandler{}
 
-func (ch *cloneSetHandler) OnAdd(obj interface{}) {
+func (ch *cloneSetHandler) OnAdd(obj interface{}, isInInitialList bool) {
 	d, ok := obj.(*appsv1alpha1.CloneSet)
 	if !ok {
 		return
@@ -94,7 +94,7 @@ type deploymentHandler struct {
 
 var _ toolscache.ResourceEventHandler = &deploymentHandler{}
 
-func (dh *deploymentHandler) OnAdd(obj interface{}) {
+func (dh *deploymentHandler) OnAdd(obj interface{}, isInInitialList bool) {
 	d, ok := obj.(*apps.Deployment)
 	if !ok {
 		return

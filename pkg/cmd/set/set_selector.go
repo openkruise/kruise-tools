@@ -45,7 +45,6 @@ type SetSelectorOptions struct {
 	PrintFlags           *genericclioptions.PrintFlags
 	RecordFlags          *genericclioptions.RecordFlags
 	dryRunStrategy       cmdutil.DryRunStrategy
-	dryRunVerifier       *resource.QueryParamVerifier
 
 	// set by args
 	resources       []string
@@ -134,11 +133,6 @@ func (o *SetSelectorOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, arg
 	if err != nil {
 		return err
 	}
-	dynamicClient, err := f.DynamicClient()
-	if err != nil {
-		return err
-	}
-	o.dryRunVerifier = resource.NewQueryParamVerifier(dynamicClient, f.OpenAPIGetter(), resource.QueryParamDryRun)
 
 	o.resources, o.selector, err = getResourcesAndSelector(args)
 	if err != nil {
@@ -210,11 +204,6 @@ func (o *SetSelectorOptions) RunSelector() error {
 		}
 		if !o.WriteToServer {
 			return o.PrintObj(info.Object, o.Out)
-		}
-		if o.dryRunStrategy == cmdutil.DryRunServer {
-			if err := o.dryRunVerifier.HasSupport(info.Mapping.GroupVersionKind); err != nil {
-				return err
-			}
 		}
 
 		actual, err := resource.
