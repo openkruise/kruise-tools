@@ -77,7 +77,11 @@ var _ migration.Control = &control{}
 
 func NewControl(cfg *rest.Config, stopChan <-chan struct{}) (migration.Control, error) {
 	scheme := api.GetScheme()
-	mapper, err := apiutil.NewDiscoveryRESTMapper(cfg)
+	c, err := rest.HTTPClientFor(cfg)
+	if err != nil {
+		return nil, err
+	}
+	mapper, err := apiutil.NewDiscoveryRESTMapper(cfg, c)
 	if err != nil {
 		return nil, err
 	}

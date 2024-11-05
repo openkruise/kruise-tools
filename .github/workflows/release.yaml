@@ -7,7 +7,7 @@ on:
 
 env:
   # Common versions
-  GO_VERSION: '1.18'
+  GO_VERSION: '1.20'
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
