@@ -19,6 +19,7 @@ package polymorphichelpers
 import (
 	"time"
 
+	rolloutsapi "github.com/openkruise/kruise-rollout-api/rollouts/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -50,6 +51,10 @@ type StatusViewerFunc func(mapping *meta.RESTMapping) (StatusViewer, error)
 
 // StatusViewerFn gives a way to easily override the function for unit testing if needed
 var StatusViewerFn StatusViewerFunc = statusViewer
+
+type RolloutViewerFunc func(obj runtime.Object) (*rolloutsapi.Rollout, error)
+
+var RolloutViewerFn RolloutViewerFunc = rolloutViewer
 
 // UpdatePodSpecForObjectFunc will call the provided function on the pod spec this object supports,
 // return false if no pod spec is supported, or return an error.
