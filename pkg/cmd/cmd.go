@@ -23,8 +23,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/spf13/cobra"
-
 	"github.com/openkruise/kruise-tools/pkg/cmd/create"
 	"github.com/openkruise/kruise-tools/pkg/cmd/describe"
 	cmdexec "github.com/openkruise/kruise-tools/pkg/cmd/exec"
