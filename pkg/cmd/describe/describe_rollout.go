@@ -73,6 +73,7 @@ type DescribeRolloutOptions struct {
 	RolloutViewerFn  func(runtime.Object) (*rolloutsapi.Rollout, error)
 	Watch            bool
 	NoColor          bool
+	All              bool
 	TimeoutSeconds   int
 	RolloutsClient   rolloutsv1beta1types.RolloutInterface
 }
@@ -119,6 +120,7 @@ func NewCmdDescribeRollout(f cmdutil.Factory, streams genericclioptions.IOStream
 	cmd.Flags().BoolVarP(&o.Watch, "watch", "w", false, "Watch for changes to the rollout")
 	cmd.Flags().BoolVar(&o.NoColor, "no-color", false, "If true, print output without color")
 	cmd.Flags().IntVar(&o.TimeoutSeconds, "timeout", 0, "Timeout after specified seconds")
+	cmd.Flags().BoolVar(&o.All, "all", false, "Show all pods in the rollout")
 
 	return cmd
 }
@@ -330,9 +332,19 @@ func (o *DescribeRolloutOptions) GetResources(rollout *rolloutsapi.Rollout) (*Wo
 		labelSelectorParam = "controller-revision-hash"
 	}
 
-	SelectorParam := rollout.Status.CanaryStatus.PodTemplateHash
-	if SelectorParam == "" {
-		SelectorParam = rollout.Status.CanaryStatus.StableRevision
+	selectorParam := rollout.Status.CanaryStatus.PodTemplateHash
+	if selectorParam == "" {
+		selectorParam = rollout.Status.CanaryStatus.StableRevision
+	}
+
+	labelSelectors := []string{
+		fmt.Sprintf("%s=%s", labelSelectorParam, selectorParam),
+	}
+
+	if !o.All && rollout.Status.CanaryStatus.CurrentStepIndex != 0 {
+		labelSelectors = append(labelSelectors,
+			fmt.Sprintf("rollouts.kruise.io/rollout-batch-id=%v",
+				rollout.Status.CanaryStatus.CurrentStepIndex))
 	}
 
 	// Fetch pods
@@ -340,7 +352,7 @@ func (o *DescribeRolloutOptions) GetResources(rollout *rolloutsapi.Rollout) (*Wo
 		WithScheme(internalapi.GetScheme(), scheme.Scheme.PrioritizedVersionsAllGroups()...).
 		NamespaceParam(o.Namespace).DefaultNamespace().
 		ResourceTypes("pods").
-		LabelSelectorParam(fmt.Sprintf("%s=%s", labelSelectorParam, SelectorParam)).
+		LabelSelectorParam(strings.Join(labelSelectors, ",")).
 		Latest().
 		Flatten().
 		Do()
