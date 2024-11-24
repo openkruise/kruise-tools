@@ -542,7 +542,7 @@ func (o *DescribeRolloutOptions) printRolloutV1AlphaInfo(rollout *rolloutsapiv1a
 				fmt.Fprintf(o.Out, tableFormat, "  -  Replicas: ", step.Replicas)
 			}
 			if step.TrafficRoutingStrategy.Weight != nil {
-				fmt.Fprintf(o.Out, tableFormat, "     Weight: ", *step.TrafficRoutingStrategy.Weight)
+				fmt.Fprintf(o.Out, tableFormat, "     Traffic: ", *step.TrafficRoutingStrategy.Weight)
 			}
 
 			if step.Matches != nil {
@@ -623,6 +623,18 @@ func (o *DescribeRolloutOptions) printRolloutV1AlphaInfo(rollout *rolloutsapiv1a
 
 }
 
+func convertCustomNetworkRefs(refs []rolloutsapiv1alpha1.CustomNetworkRef) []rolloutsapiv1beta1.ObjectRef {
+	var result []rolloutsapiv1beta1.ObjectRef
+	for _, ref := range refs {
+		result = append(result, rolloutsapiv1beta1.ObjectRef{
+			Name:       ref.Name,
+			Kind:       ref.Kind,
+			APIVersion: ref.APIVersion,
+		})
+	}
+	return result
+}
+
 func (o *DescribeRolloutOptions) printRolloutV1BetaInfo(rollout *rolloutsapiv1beta1.Rollout) {
 	fmt.Fprintf(o.Out, tableFormat, "Name:", rollout.Name)
 	fmt.Fprintf(o.Out, tableFormat, "Namespace:", rollout.Namespace)
@@ -678,20 +690,48 @@ func (o *DescribeRolloutOptions) printRolloutV1BetaInfo(rollout *rolloutsapiv1be
 		}
 
 		if rollout.Spec.Strategy.Canary.TrafficRoutingRef != "" {
-			// r := o.Builder().
-			// 	WithScheme(internalapi.GetScheme(), scheme.Scheme.PrioritizedVersionsAllGroups()...).
-			// 	NamespaceParam(o.Namespace).DefaultNamespace().
-			// 	ResourceNames("trafficrouting.rollouts.kruise.io", rollout.Spec.Strategy.Canary.TrafficRoutingRef).
-			// 	ContinueOnError().
-			// 	Latest().
-			// 	Flatten().
-			// 	Do()
+			r := o.Builder().
+				WithScheme(internalapi.GetScheme(), scheme.Scheme.PrioritizedVersionsAllGroups()...).
+				ResourceNames(o.Namespace).DefaultNamespace().
+				ResourceNames("trafficrouting.rollouts.kruise.io", rollout.Spec.Strategy.Canary.TrafficRoutingRef).
+				ContinueOnError().
+				Latest().
+				Flatten().
+				Do()
 
-			// if err := r.Err(); err != nil {
-			// 	fmt.Fprintf(o.Out, "Error getting TrafficRoutingRef: %v\n", err)
-			// 	return
-			// }
+			
+			if err := r.Err(); err != nil {
+				fmt.Fprintf(o.Out, "Error getting TrafficRoutingRef: %v\n", err)
+				return
+			}
 
+			err := r.Visit(func(info *resource.Info, err error) error {
+				if err != nil {
+					return err
+				}
+				trafficRouting, ok := info.Object.(*rolloutsapiv1alpha1.TrafficRouting)
+				if !ok {
+					return fmt.Errorf("expected *rolloutsapiv1alpha1.TrafficRouting")
+				}
+
+				var trafficRoutingRef []rolloutsapiv1beta1.TrafficRoutingRef
+				for _, ref := range trafficRouting.Spec.ObjectRef {
+					trafficRoutingRef = append(trafficRoutingRef, rolloutsapiv1beta1.TrafficRoutingRef{
+						Service: ref.Service,
+						Ingress: (*rolloutsapiv1beta1.IngressTrafficRouting)(ref.Ingress),
+						Gateway: (*rolloutsapiv1beta1.GatewayTrafficRouting)(ref.Gateway),
+						CustomNetworkRefs: convertCustomNetworkRefs(ref.CustomNetworkRefs),
+					})
+				}
+
+				o.printTrafficRouting(trafficRoutingRef)
+
+				return nil
+			})
+
+			if err != nil {
+				return 
+			}
 		}
 	}
 
