@@ -538,6 +538,7 @@ func extractRolloutInfo(obj interface{}) *RolloutInfo {
 		info.Namespace = r.Namespace
 		info.Phase = string(r.Status.Phase)
 		info.Message = r.Status.Message
+		info.ObservedGeneration = r.Status.ObservedGeneration
 		info.Generation = r.GetObjectMeta().GetGeneration()
 		info.CurrentStepIndex = r.Status.CanaryStatus.CurrentStepIndex
 		info.CurrentStepState = string(r.Status.CanaryStatus.CurrentStepState)
@@ -560,6 +561,7 @@ func extractRolloutInfo(obj interface{}) *RolloutInfo {
 		info.Message = r.Status.Message
 		info.ObservedGeneration = r.Status.ObservedGeneration
 		info.Generation = r.GetObjectMeta().GetGeneration()
+		info.CurrentStepIndex = r.Status.CanaryStatus.CurrentStepIndex
 		info.CurrentStepState = string(r.Status.CanaryStatus.CurrentStepState)
 		info.WorkloadRef = RolloutWorkloadRef{
 			Kind:            r.Spec.ObjectRef.WorkloadRef.Kind,
