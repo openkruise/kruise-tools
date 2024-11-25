@@ -104,6 +104,20 @@ type WorkloadInfo struct {
 	UpdateRevision  string
 }
 
+type RolloutInfo struct {
+	Name               string
+	Namespace          string
+	Phase              string
+	Message            string
+	ObservedGeneration int64
+	Generation         int64
+	CurrentStepIndex   int32
+	CurrentStepState   string
+	Strategy           rolloutsapiv1beta1.CanaryStrategy
+	TrafficRoutingRef  string
+	WorkloadRef        RolloutWorkloadRef
+}
+
 func NewCmdDescribeRollout(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	o := &DescribeRolloutOptions{IOStreams: streams}
 	cmd := &cobra.Command{
@@ -269,17 +283,6 @@ func (o *DescribeRolloutOptions) watchRolloutUpdates(ctx context.Context, watche
 	}
 }
 
-func (o *DescribeRolloutOptions) printRolloutInfo(rollout interface{}) {
-	switch r := rollout.(type) {
-	case *rolloutsapiv1beta1.Rollout:
-		o.printRolloutV1BetaInfo(r)
-	case *rolloutsapiv1alpha1.Rollout:
-		o.printRolloutV1AlphaInfo(r)
-	default:
-		fmt.Fprintf(o.Out, "Unsupported rollout type: %T\n", rollout)
-	}
-}
-
 func (o *DescribeRolloutOptions) clearScreen() {
 	fmt.Fprint(o.Out, "\033[2J\033[H")
 }
@@ -427,7 +430,7 @@ func (o *DescribeRolloutOptions) GetResources(rollout RolloutWorkloadRef) (*Work
 				restartCount += int(containerStatus.RestartCount)
 			}
 
-			podInfo.Restarts = fmt.Sprintf("%v", strconv.Itoa(int(restartCount)))
+			podInfo.Restarts = strconv.Itoa(restartCount)
 		}
 
 		// Calculate ready status
@@ -514,115 +517,6 @@ func (o *DescribeRolloutOptions) printTrafficRouting(trafficRouting []rolloutsap
 	}
 }
 
-func (o *DescribeRolloutOptions) printRolloutV1AlphaInfo(rollout *rolloutsapiv1alpha1.Rollout) {
-	fmt.Fprintf(o.Out, tableFormat, "Name:", rollout.Name)
-	fmt.Fprintf(o.Out, tableFormat, "Namespace:", rollout.Namespace)
-	if rollout.Status.ObservedGeneration == rollout.GetObjectMeta().GetGeneration() {
-		fmt.Fprintf(o.Out, tableFormat, "Status:", o.colorizeIcon(string(rollout.Status.Phase))+" "+string(rollout.Status.Phase))
-
-		if rollout.Status.Message != "" {
-			fmt.Fprintf(o.Out, tableFormat, "Message:", rollout.Status.Message)
-		}
-	}
-
-	// Strategy
-	fmt.Fprintf(o.Out, tableFormat, "Strategy:", "Canary")
-
-	if canary := rollout.Spec.Strategy.Canary; canary != nil {
-		fmt.Fprintf(o.Out, tableFormat, " Step:", strconv.Itoa(int(rollout.Status.CanaryStatus.CurrentStepIndex))+"/"+strconv.Itoa(len(canary.Steps)))
-		fmt.Fprint(o.Out, " Steps:\n")
-		currentStepIndex := int(rollout.Status.CanaryStatus.CurrentStepIndex)
-		for i, step := range canary.Steps {
-			isCurrentStep := (i + 1) == currentStepIndex
-			if isCurrentStep {
-				fmt.Fprint(o.Out, "\033[32m")
-			}
-
-			if step.Replicas != nil {
-				fmt.Fprintf(o.Out, tableFormat, "  -  Replicas: ", step.Replicas)
-			}
-			if step.TrafficRoutingStrategy.Weight != nil {
-				fmt.Fprintf(o.Out, tableFormat, "     Traffic: ", *step.TrafficRoutingStrategy.Weight)
-			}
-
-			if step.Matches != nil {
-				fmt.Fprintln(o.Out, "     Matches: ")
-				for _, match := range step.Matches {
-					fmt.Fprintln(o.Out, "      - Headers: ")
-					for _, path := range match.Headers {
-						fmt.Fprintf(o.Out, tableFormat, "       - Name:", path.Name)
-						fmt.Fprintf(o.Out, tableFormat, "         Value:", path.Value)
-						fmt.Fprintf(o.Out, tableFormat, "         Type:", *path.Type)
-					}
-				}
-			}
-
-			if isCurrentStep {
-				fmt.Fprintf(o.Out, tableFormat, "     State:", rollout.Status.CanaryStatus.CurrentStepState)
-				fmt.Fprint(o.Out, "\033[0m") // Reset color
-			}
-		}
-	}
-
-	rolloutWorkload := RolloutWorkloadRef{
-		Kind:            rollout.Spec.ObjectRef.WorkloadRef.Kind,
-		Name:            rollout.Spec.ObjectRef.WorkloadRef.Name,
-		StableRevision:  rollout.Status.CanaryStatus.StableRevision,
-		CanaryRevision:  rollout.Status.CanaryStatus.CanaryRevision,
-		PodTemplateHash: rollout.Status.CanaryStatus.PodTemplateHash,
-	}
-
-	// Workload
-	info, err := o.GetResources(rolloutWorkload)
-	if err != nil {
-		fmt.Fprintf(o.Out, "Error getting resources: %v\n", err)
-		return
-	}
-
-	// Images
-	for i, image := range info.Images {
-		if i == 0 {
-			fmt.Fprintf(o.Out, tableFormat, "Images:", image)
-		} else {
-			fmt.Fprintf(o.Out, tableFormat, "", image)
-		}
-	}
-
-	// Revisions
-	fmt.Fprintf(o.Out, tableFormat, "Current Revision:", info.CurrentRevision)
-	fmt.Fprintf(o.Out, tableFormat, "Update Revision:", info.UpdateRevision)
-
-	// Replicas
-	if rollout.Status.ObservedGeneration == rollout.GetObjectMeta().GetGeneration() {
-		fmt.Fprint(o.Out, "Replicas:\n")
-		fmt.Fprintf(o.Out, tableFormat, " Desired:", info.Replicas.Desired)
-		fmt.Fprintf(o.Out, tableFormat, " Updated:", info.Replicas.Updated)
-		fmt.Fprintf(o.Out, tableFormat, " Current:", info.Replicas.Current)
-		fmt.Fprintf(o.Out, tableFormat, " Ready:", info.Replicas.Ready)
-		fmt.Fprintf(o.Out, tableFormat, " Available:", info.Replicas.Available)
-	}
-
-	if len(info.Pod) > 0 {
-		w := tabwriter.NewWriter(o.Out, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "NAME\tREADY\tBATCH ID\tREVISION\tAGE\tRESTARTS\tSTATUS")
-
-		for _, pod := range info.Pod {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s %s\n",
-				pod.Name,
-				pod.Ready,
-				pod.BatchID,
-				pod.Revision,
-				pod.Age,
-				pod.Restarts,
-				o.colorizeIcon(pod.Status),
-				pod.Status,
-			)
-		}
-		w.Flush()
-	}
-
-}
-
 func convertCustomNetworkRefs(refs []rolloutsapiv1alpha1.CustomNetworkRef) []rolloutsapiv1beta1.ObjectRef {
 	var result []rolloutsapiv1beta1.ObjectRef
 	for _, ref := range refs {
@@ -635,123 +529,142 @@ func convertCustomNetworkRefs(refs []rolloutsapiv1alpha1.CustomNetworkRef) []rol
 	return result
 }
 
-func (o *DescribeRolloutOptions) printRolloutV1BetaInfo(rollout *rolloutsapiv1beta1.Rollout) {
-	fmt.Fprintf(o.Out, tableFormat, "Name:", rollout.Name)
-	fmt.Fprintf(o.Out, tableFormat, "Namespace:", rollout.Namespace)
-	if rollout.Status.ObservedGeneration == rollout.GetObjectMeta().GetGeneration() {
-		fmt.Fprintf(o.Out, tableFormat, "Status:", o.colorizeIcon(string(rollout.Status.Phase))+" "+string(rollout.Status.Phase))
+func extractRolloutInfo(obj interface{}) *RolloutInfo {
+	info := &RolloutInfo{}
 
-		if rollout.Status.Message != "" {
-			fmt.Fprintf(o.Out, tableFormat, "Message:", rollout.Status.Message)
+	switch r := obj.(type) {
+	case *rolloutsapiv1beta1.Rollout:
+		info.Name = r.Name
+		info.Namespace = r.Namespace
+		info.Phase = string(r.Status.Phase)
+		info.Message = r.Status.Message
+		info.Generation = r.GetObjectMeta().GetGeneration()
+		info.CurrentStepIndex = r.Status.CanaryStatus.CurrentStepIndex
+		info.CurrentStepState = string(r.Status.CanaryStatus.CurrentStepState)
+		info.WorkloadRef = RolloutWorkloadRef{
+			Kind:            r.Spec.WorkloadRef.Kind,
+			Name:            r.Spec.WorkloadRef.Name,
+			StableRevision:  r.Status.CanaryStatus.StableRevision,
+			CanaryRevision:  r.Status.CanaryStatus.CanaryRevision,
+			PodTemplateHash: r.Status.CanaryStatus.PodTemplateHash,
+		}
+
+		if r.Spec.Strategy.Canary != nil {
+			info.TrafficRoutingRef = r.Spec.Strategy.Canary.TrafficRoutingRef
+		}
+
+	case *rolloutsapiv1alpha1.Rollout:
+		info.Name = r.Name
+		info.Namespace = r.Namespace
+		info.Phase = string(r.Status.Phase)
+		info.Message = r.Status.Message
+		info.ObservedGeneration = r.Status.ObservedGeneration
+		info.Generation = r.GetObjectMeta().GetGeneration()
+		info.CurrentStepState = string(r.Status.CanaryStatus.CurrentStepState)
+		info.WorkloadRef = RolloutWorkloadRef{
+			Kind:            r.Spec.ObjectRef.WorkloadRef.Kind,
+			Name:            r.Spec.ObjectRef.WorkloadRef.Name,
+			StableRevision:  r.Status.CanaryStatus.StableRevision,
+			CanaryRevision:  r.Status.CanaryStatus.CanaryRevision,
+			PodTemplateHash: r.Status.CanaryStatus.PodTemplateHash,
+		}
+
+		if r.Spec.Strategy.Canary != nil {
+			info.TrafficRoutingRef = r.ObjectMeta.Annotations["rollouts.kruise.io/trafficrouting"]
 		}
 	}
 
-	// Strategy
-	fmt.Fprintf(o.Out, tableFormat, "Strategy:", "Canary")
+	if obj.(*rolloutsapiv1beta1.Rollout).Spec.Strategy.Canary != nil {
+		info.Strategy = *obj.(*rolloutsapiv1beta1.Rollout).Spec.Strategy.Canary
+	}
 
-	if canary := rollout.Spec.Strategy.Canary; canary != nil {
-		fmt.Fprintf(o.Out, tableFormat, " Step:", strconv.Itoa(int(rollout.Status.CanaryStatus.CurrentStepIndex))+"/"+strconv.Itoa(len(canary.Steps)))
-		fmt.Fprint(o.Out, " Steps:\n")
-		currentStepIndex := int(rollout.Status.CanaryStatus.CurrentStepIndex)
-		for i, step := range canary.Steps {
-			isCurrentStep := (i + 1) == currentStepIndex
-			if isCurrentStep {
-				fmt.Fprint(o.Out, "\033[32m")
-			}
+	return info
+}
 
-			if step.Replicas != nil {
-				fmt.Fprintf(o.Out, tableFormat, "  -  Replicas: ", step.Replicas)
-			}
-			if step.Traffic != nil {
-				fmt.Fprintf(o.Out, tableFormat, "     Traffic: ", *step.Traffic)
-			}
+func (o *DescribeRolloutOptions) fetchAndPrintTrafficRoutingRef(ref string) {
+	r := o.Builder().
+		WithScheme(internalapi.GetScheme(), scheme.Scheme.PrioritizedVersionsAllGroups()...).
+		NamespaceParam(o.Namespace).DefaultNamespace().
+		ResourceNames("trafficroutings.rollouts.kruise.io", ref).
+		ContinueOnError().
+		Latest().
+		Flatten().
+		Do()
 
-			if step.Matches != nil {
-				fmt.Fprintln(o.Out, "     Matches: ")
-				for _, match := range step.Matches {
-					fmt.Fprintln(o.Out, "      - Headers: ")
-					for _, path := range match.Headers {
-						fmt.Fprintf(o.Out, tableFormat, "       - Name:", path.Name)
-						fmt.Fprintf(o.Out, tableFormat, "         Value:", path.Value)
-						fmt.Fprintf(o.Out, tableFormat, "         Type:", *path.Type)
-					}
-				}
-			}
+	if err := r.Err(); err != nil {
+		fmt.Fprintf(o.Out, "Error getting TrafficRoutingRef: %v\n", err)
+		return
+	}
 
-			if isCurrentStep {
-				fmt.Fprintf(o.Out, tableFormat, "     State:", rollout.Status.CanaryStatus.CurrentStepState)
-				fmt.Fprint(o.Out, "\033[0m") // Reset color
-			}
+	err := r.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+		trafficRouting, ok := info.Object.(*rolloutsapiv1alpha1.TrafficRouting)
+		if !ok {
+			return fmt.Errorf("expected *rolloutsapiv1alpha1.TrafficRouting")
 		}
 
-		// Traffic Routings
-		if len(rollout.Spec.Strategy.Canary.TrafficRoutings) > 0 {
-			o.printTrafficRouting(rollout.Spec.Strategy.Canary.TrafficRoutings)
-		}
-
-		if rollout.Spec.Strategy.Canary.TrafficRoutingRef != "" {
-			r := o.Builder().
-				WithScheme(internalapi.GetScheme(), scheme.Scheme.PrioritizedVersionsAllGroups()...).
-				ResourceNames(o.Namespace).DefaultNamespace().
-				ResourceNames("trafficrouting.rollouts.kruise.io", rollout.Spec.Strategy.Canary.TrafficRoutingRef).
-				ContinueOnError().
-				Latest().
-				Flatten().
-				Do()
-
-			
-			if err := r.Err(); err != nil {
-				fmt.Fprintf(o.Out, "Error getting TrafficRoutingRef: %v\n", err)
-				return
-			}
-
-			err := r.Visit(func(info *resource.Info, err error) error {
-				if err != nil {
-					return err
-				}
-				trafficRouting, ok := info.Object.(*rolloutsapiv1alpha1.TrafficRouting)
-				if !ok {
-					return fmt.Errorf("expected *rolloutsapiv1alpha1.TrafficRouting")
-				}
-
-				var trafficRoutingRef []rolloutsapiv1beta1.TrafficRoutingRef
-				for _, ref := range trafficRouting.Spec.ObjectRef {
-					trafficRoutingRef = append(trafficRoutingRef, rolloutsapiv1beta1.TrafficRoutingRef{
-						Service: ref.Service,
-						Ingress: (*rolloutsapiv1beta1.IngressTrafficRouting)(ref.Ingress),
-						Gateway: (*rolloutsapiv1beta1.GatewayTrafficRouting)(ref.Gateway),
-						CustomNetworkRefs: convertCustomNetworkRefs(ref.CustomNetworkRefs),
-					})
-				}
-
-				o.printTrafficRouting(trafficRoutingRef)
-
-				return nil
+		var trafficRoutingRef []rolloutsapiv1beta1.TrafficRoutingRef
+		for _, ref := range trafficRouting.Spec.ObjectRef {
+			trafficRoutingRef = append(trafficRoutingRef, rolloutsapiv1beta1.TrafficRoutingRef{
+				Service:           ref.Service,
+				Ingress:           (*rolloutsapiv1beta1.IngressTrafficRouting)(ref.Ingress),
+				Gateway:           (*rolloutsapiv1beta1.GatewayTrafficRouting)(ref.Gateway),
+				CustomNetworkRefs: convertCustomNetworkRefs(ref.CustomNetworkRefs),
 			})
+		}
 
-			if err != nil {
-				return 
-			}
+		o.printTrafficRouting(trafficRoutingRef)
+
+		return nil
+	})
+
+	if err != nil {
+		return
+	}
+}
+
+func (o *DescribeRolloutOptions) printRolloutInfo(rollout interface{}) {
+	info := extractRolloutInfo(rollout)
+
+	// Print basic info
+	fmt.Fprintf(o.Out, tableFormat, "Name:", info.Name)
+	fmt.Fprintf(o.Out, tableFormat, "Namespace:", info.Namespace)
+
+	if info.ObservedGeneration == info.Generation {
+		fmt.Fprintf(o.Out, tableFormat, "Status:", o.colorizeIcon(info.Phase)+" "+info.Phase)
+		if info.Message != "" {
+			fmt.Fprintf(o.Out, tableFormat, "Message:", info.Message)
 		}
 	}
 
-	// Workload
-	rolloutWorkload := RolloutWorkloadRef{
-		Kind:            rollout.Spec.WorkloadRef.Kind,
-		Name:            rollout.Spec.WorkloadRef.Name,
-		StableRevision:  rollout.Status.CanaryStatus.StableRevision,
-		CanaryRevision:  rollout.Status.CanaryStatus.CanaryRevision,
-		PodTemplateHash: rollout.Status.CanaryStatus.PodTemplateHash,
+	// Print strategy
+	fmt.Fprintf(o.Out, tableFormat, "Strategy:", "Canary")
+	fmt.Fprintf(o.Out, tableFormat, " Step:", strconv.Itoa(int(info.CurrentStepIndex))+"/"+strconv.Itoa(len(info.Strategy.Steps)))
+
+	// Print steps
+	fmt.Fprint(o.Out, " Steps:\n")
+	o.printSteps(info)
+
+	// Print traffic routing if available
+	if len(info.Strategy.TrafficRoutings) > 0 {
+		o.printTrafficRouting(info.Strategy.TrafficRoutings)
 	}
 
-	info, err := o.GetResources(rolloutWorkload)
+	if info.TrafficRoutingRef != "" {
+		o.fetchAndPrintTrafficRoutingRef(info.TrafficRoutingRef)
+	}
+
+	// Print workload info
+	workloadInfo, err := o.GetResources(info.WorkloadRef)
 	if err != nil {
 		fmt.Fprintf(o.Out, "Error getting resources: %v\n", err)
 		return
 	}
 
-	// Images
-	for i, image := range info.Images {
+	// Print images
+	for i, image := range workloadInfo.Images {
 		if i == 0 {
 			fmt.Fprintf(o.Out, tableFormat, "Images:", image)
 		} else {
@@ -759,36 +672,80 @@ func (o *DescribeRolloutOptions) printRolloutV1BetaInfo(rollout *rolloutsapiv1be
 		}
 	}
 
-	// Revisions
-	fmt.Fprintf(o.Out, tableFormat, "Current Revision:", info.CurrentRevision)
-	fmt.Fprintf(o.Out, tableFormat, "Update Revision:", info.UpdateRevision)
+	// Print revisions
+	fmt.Fprintf(o.Out, tableFormat, "Current Revision:", workloadInfo.CurrentRevision)
+	fmt.Fprintf(o.Out, tableFormat, "Update Revision:", workloadInfo.UpdateRevision)
 
-	// Replicas
-	if rollout.Status.ObservedGeneration == rollout.GetObjectMeta().GetGeneration() {
-		fmt.Fprint(o.Out, "Replicas:\n")
-		fmt.Fprintf(o.Out, tableFormat, " Desired:", info.Replicas.Desired)
-		fmt.Fprintf(o.Out, tableFormat, " Updated:", info.Replicas.Updated)
-		fmt.Fprintf(o.Out, tableFormat, " Current:", info.Replicas.Current)
-		fmt.Fprintf(o.Out, tableFormat, " Ready:", info.Replicas.Ready)
-		fmt.Fprintf(o.Out, tableFormat, " Available:", info.Replicas.Available)
+	// Print replicas
+	if info.ObservedGeneration == info.Generation {
+		o.printReplicas(workloadInfo)
 	}
 
-	if len(info.Pod) > 0 {
-		w := tabwriter.NewWriter(o.Out, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "NAME\tREADY\tBATCH ID\tREVISION\tAGE\tRESTARTS\tSTATUS")
+	// Print pods
+	if len(workloadInfo.Pod) > 0 {
+		o.printPods(workloadInfo)
+	}
+}
 
-		for _, pod := range info.Pod {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s %s\n",
-				pod.Name,
-				pod.Ready,
-				pod.BatchID,
-				pod.Revision,
-				pod.Age,
-				pod.Restarts,
-				o.colorizeIcon(pod.Status),
-				pod.Status,
-			)
+func (o *DescribeRolloutOptions) printSteps(info *RolloutInfo) {
+	currentStepIndex := int(info.CurrentStepIndex)
+
+	for i, step := range info.Strategy.Steps {
+		isCurrentStep := (i + 1) == currentStepIndex
+		if isCurrentStep {
+			fmt.Fprint(o.Out, "\033[32m")
 		}
-		w.Flush()
+
+		if step.Replicas != nil {
+			fmt.Fprintf(o.Out, tableFormat, "  -  Replicas: ", step.Replicas)
+		}
+		if step.Traffic != nil {
+			fmt.Fprintf(o.Out, tableFormat, "     Traffic: ", *step.Traffic)
+		}
+
+		if len(step.Matches) > 0 {
+			fmt.Fprintln(o.Out, "     Matches: ")
+			for _, match := range step.Matches {
+				fmt.Fprintln(o.Out, "      - Headers: ")
+				for _, header := range match.Headers {
+					fmt.Fprintf(o.Out, tableFormat, "       - Name:", header.Name)
+					fmt.Fprintf(o.Out, tableFormat, "         Value:", header.Value)
+					fmt.Fprintf(o.Out, tableFormat, "         Type:", *header.Type)
+				}
+			}
+		}
+
+		if isCurrentStep {
+			fmt.Fprintf(o.Out, tableFormat, "     State:", info.CurrentStepState)
+			fmt.Fprint(o.Out, "\033[0m")
+		}
 	}
+}
+
+func (o *DescribeRolloutOptions) printReplicas(info *WorkloadInfo) {
+	fmt.Fprint(o.Out, "Replicas:\n")
+	fmt.Fprintf(o.Out, tableFormat, " Desired:", info.Replicas.Desired)
+	fmt.Fprintf(o.Out, tableFormat, " Updated:", info.Replicas.Updated)
+	fmt.Fprintf(o.Out, tableFormat, " Current:", info.Replicas.Current)
+	fmt.Fprintf(o.Out, tableFormat, " Ready:", info.Replicas.Ready)
+	fmt.Fprintf(o.Out, tableFormat, " Available:", info.Replicas.Available)
+}
+
+func (o *DescribeRolloutOptions) printPods(info *WorkloadInfo) {
+	w := tabwriter.NewWriter(o.Out, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "NAME\tREADY\tBATCH ID\tREVISION\tAGE\tRESTARTS\tSTATUS")
+
+	for _, pod := range info.Pod {
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s %s\n",
+			pod.Name,
+			pod.Ready,
+			pod.BatchID,
+			pod.Revision,
+			pod.Age,
+			pod.Restarts,
+			o.colorizeIcon(pod.Status),
+			pod.Status,
+		)
+	}
+	w.Flush()
 }
