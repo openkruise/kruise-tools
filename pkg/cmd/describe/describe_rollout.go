@@ -75,7 +75,7 @@ type DescribeRolloutOptions struct {
 	RolloutViewerFn        func(runtime.Object) (interface{}, error)
 	Watch                  bool
 	NoColor                bool
-	All              bool
+	All                    bool
 	TimeoutSeconds         int
 	RolloutsV1beta1Client  rolloutsv1beta1types.RolloutInterface
 	RolloutsV1alpha1Client rolloutv1alpha1types.RolloutInterface
@@ -290,11 +290,12 @@ func (o *DescribeRolloutOptions) clearScreen() {
 }
 
 type RolloutWorkloadRef struct {
-	Kind            string
-	Name            string
-	StableRevision  string
-	CanaryRevision  string
-	PodTemplateHash string
+	Kind             string
+	Name             string
+	StableRevision   string
+	CanaryRevision   string
+	PodTemplateHash  string
+	CurrentStepIndex int32
 }
 
 func (o *DescribeRolloutOptions) GetResources(rollout RolloutWorkloadRef) (*WorkloadInfo, error) {
@@ -386,10 +387,10 @@ func (o *DescribeRolloutOptions) GetResources(rollout RolloutWorkloadRef) (*Work
 		fmt.Sprintf("%s=%s", labelSelectorParam, selectorParam),
 	}
 
-	if !o.All && rollout.Status.CanaryStatus.CurrentStepIndex != 0 {
+	if !o.All && rollout.CurrentStepIndex != 0 {
 		labelSelectors = append(labelSelectors,
 			fmt.Sprintf("rollouts.kruise.io/rollout-batch-id=%v",
-				rollout.Status.CanaryStatus.CurrentStepIndex))
+				rollout.CurrentStepIndex))
 	}
 
 	// Fetch pods
@@ -555,11 +556,12 @@ func extractRolloutInfo(obj interface{}) *RolloutInfo {
 		info.CurrentStepIndex = r.Status.CanaryStatus.CurrentStepIndex
 		info.CurrentStepState = string(r.Status.CanaryStatus.CurrentStepState)
 		info.WorkloadRef = RolloutWorkloadRef{
-			Kind:            r.Spec.WorkloadRef.Kind,
-			Name:            r.Spec.WorkloadRef.Name,
-			StableRevision:  r.Status.CanaryStatus.StableRevision,
-			CanaryRevision:  r.Status.CanaryStatus.CanaryRevision,
-			PodTemplateHash: r.Status.CanaryStatus.PodTemplateHash,
+			Kind:             r.Spec.WorkloadRef.Kind,
+			Name:             r.Spec.WorkloadRef.Name,
+			StableRevision:   r.Status.CanaryStatus.StableRevision,
+			CanaryRevision:   r.Status.CanaryStatus.CanaryRevision,
+			PodTemplateHash:  r.Status.CanaryStatus.PodTemplateHash,
+			CurrentStepIndex: r.Status.CanaryStatus.CurrentStepIndex,
 		}
 
 		if r.Spec.Strategy.Canary != nil {
@@ -576,11 +578,12 @@ func extractRolloutInfo(obj interface{}) *RolloutInfo {
 		info.CurrentStepIndex = r.Status.CanaryStatus.CurrentStepIndex
 		info.CurrentStepState = string(r.Status.CanaryStatus.CurrentStepState)
 		info.WorkloadRef = RolloutWorkloadRef{
-			Kind:            r.Spec.ObjectRef.WorkloadRef.Kind,
-			Name:            r.Spec.ObjectRef.WorkloadRef.Name,
-			StableRevision:  r.Status.CanaryStatus.StableRevision,
-			CanaryRevision:  r.Status.CanaryStatus.CanaryRevision,
-			PodTemplateHash: r.Status.CanaryStatus.PodTemplateHash,
+			Kind:             r.Spec.ObjectRef.WorkloadRef.Kind,
+			Name:             r.Spec.ObjectRef.WorkloadRef.Name,
+			StableRevision:   r.Status.CanaryStatus.StableRevision,
+			CanaryRevision:   r.Status.CanaryStatus.CanaryRevision,
+			PodTemplateHash:  r.Status.CanaryStatus.PodTemplateHash,
+			CurrentStepIndex: r.Status.CanaryStatus.CurrentStepIndex,
 		}
 
 		if r.Spec.Strategy.Canary != nil {
