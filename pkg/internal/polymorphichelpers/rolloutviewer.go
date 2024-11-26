@@ -21,14 +21,18 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 
-	rolloutschema "github.com/openkruise/kruise-rollout-api/rollouts/v1beta1"
+	rolloutv1alpha1 "github.com/openkruise/kruise-rollout-api/rollouts/v1alpha1"
+	rolloutv1beta1 "github.com/openkruise/kruise-rollout-api/rollouts/v1beta1"
 )
 
 // statusViewer returns a StatusViewer for printing rollout status.
-func rolloutViewer(obj runtime.Object) (*rolloutschema.Rollout, error) {
-	rollout, ok := obj.(*rolloutschema.Rollout)
-	if !ok {
-		return nil, fmt.Errorf("Object is not a rollout")
+func rolloutViewer(obj runtime.Object) (interface{}, error) {
+	if rollout, ok := obj.(*rolloutv1beta1.Rollout); ok {
+		return rollout, nil
 	}
-	return rollout, nil
+	if rollout, ok := obj.(*rolloutv1alpha1.Rollout); ok {
+		return rollout, nil
+	}
+
+	return nil, fmt.Errorf("unknown rollout type: %T", obj)
 }
