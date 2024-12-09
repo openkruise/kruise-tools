@@ -20,7 +20,8 @@ package rollout
 import (
 	"fmt"
 
-	rolloutsapi "github.com/openkruise/kruise-rollout-api/rollouts/v1beta1"
+	rolloutsapiv1alpha1 "github.com/openkruise/kruise-rollout-api/rollouts/v1alpha1"
+	rolloutsapiv1beta1 "github.com/openkruise/kruise-rollout-api/rollouts/v1beta1"
 	internalapi "github.com/openkruise/kruise-tools/pkg/api"
 	internalpolymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
@@ -197,11 +198,10 @@ func (o *UndoOptions) RunUndo() error {
 			if obj == nil {
 				return fmt.Errorf("Rollout object not found")
 			}
-			ro, ok := obj.(*rolloutsapi.Rollout)
-			if !ok {
-				return fmt.Errorf("unsupported version of Rollout")
+			workloadRef, err := getWorkloadRefFromRollout(obj)
+			if err != nil {
+				return err
 			}
-			workloadRef := ro.Spec.WorkloadRef
 			gv, err := schema.ParseGroupVersion(workloadRef.APIVersion)
 			if err != nil {
 				return err
@@ -245,4 +245,20 @@ func (o *UndoOptions) RunUndo() error {
 	err = r2.Visit(undoFunc)
 	aggErrs = append(aggErrs, err)
 	return errors.NewAggregate(aggErrs)
+}
+
+func getWorkloadRefFromRollout(obj interface{}) (workloadRef *rolloutsapiv1beta1.ObjectRef, err error) {
+	switch rollout := obj.(type) {
+	case *rolloutsapiv1alpha1.Rollout:
+		workloadRef = &rolloutsapiv1beta1.ObjectRef{
+			Kind:       rollout.Spec.ObjectRef.WorkloadRef.Kind,
+			APIVersion: rollout.Spec.ObjectRef.WorkloadRef.APIVersion,
+			Name:       rollout.Spec.ObjectRef.WorkloadRef.Name,
+		}
+	case *rolloutsapiv1beta1.Rollout:
+		workloadRef = &rollout.Spec.WorkloadRef
+	default:
+		return nil, fmt.Errorf("unsupported version of Rollout")
+	}
+	return workloadRef, nil
 }
