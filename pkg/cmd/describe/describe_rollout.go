@@ -75,6 +75,7 @@ type DescribeRolloutOptions struct {
 	RolloutViewerFn        func(runtime.Object) (interface{}, error)
 	Watch                  bool
 	NoColor                bool
+	All                    bool
 	TimeoutSeconds         int
 	RolloutsV1beta1Client  rolloutsv1beta1types.RolloutInterface
 	RolloutsV1alpha1Client rolloutv1alpha1types.RolloutInterface
@@ -136,6 +137,7 @@ func NewCmdDescribeRollout(f cmdutil.Factory, streams genericclioptions.IOStream
 	cmd.Flags().BoolVarP(&o.Watch, "watch", "w", false, "Watch for changes to the rollout")
 	cmd.Flags().BoolVar(&o.NoColor, "no-color", false, "If true, print output without color")
 	cmd.Flags().IntVar(&o.TimeoutSeconds, "timeout", 0, "Timeout after specified seconds")
+	cmd.Flags().BoolVar(&o.All, "all", false, "Show all pods in the rollout")
 
 	return cmd
 }
@@ -288,11 +290,12 @@ func (o *DescribeRolloutOptions) clearScreen() {
 }
 
 type RolloutWorkloadRef struct {
-	Kind            string
-	Name            string
-	StableRevision  string
-	CanaryRevision  string
-	PodTemplateHash string
+	Kind             string
+	Name             string
+	StableRevision   string
+	CanaryRevision   string
+	PodTemplateHash  string
+	CurrentStepIndex int32
 }
 
 func (o *DescribeRolloutOptions) GetResources(rollout RolloutWorkloadRef) (*WorkloadInfo, error) {
@@ -375,9 +378,19 @@ func (o *DescribeRolloutOptions) GetResources(rollout RolloutWorkloadRef) (*Work
 		labelSelectorParam = "controller-revision-hash"
 	}
 
-	SelectorParam := rollout.PodTemplateHash
-	if SelectorParam == "" {
-		SelectorParam = rollout.StableRevision
+	selectorParam := rollout.PodTemplateHash
+	if selectorParam == "" {
+		selectorParam = rollout.StableRevision
+	}
+
+	labelSelectors := []string{
+		fmt.Sprintf("%s=%s", labelSelectorParam, selectorParam),
+	}
+
+	if !o.All && rollout.CurrentStepIndex != 0 {
+		labelSelectors = append(labelSelectors,
+			fmt.Sprintf("rollouts.kruise.io/rollout-batch-id=%v",
+				rollout.CurrentStepIndex))
 	}
 
 	// Fetch pods
@@ -385,7 +398,7 @@ func (o *DescribeRolloutOptions) GetResources(rollout RolloutWorkloadRef) (*Work
 		WithScheme(internalapi.GetScheme(), scheme.Scheme.PrioritizedVersionsAllGroups()...).
 		NamespaceParam(o.Namespace).DefaultNamespace().
 		ResourceTypes("pods").
-		LabelSelectorParam(fmt.Sprintf("%s=%s", labelSelectorParam, SelectorParam)).
+		LabelSelectorParam(strings.Join(labelSelectors, ",")).
 		Latest().
 		Flatten().
 		Do()
@@ -543,11 +556,12 @@ func extractRolloutInfo(obj interface{}) *RolloutInfo {
 		info.CurrentStepIndex = r.Status.CanaryStatus.CurrentStepIndex
 		info.CurrentStepState = string(r.Status.CanaryStatus.CurrentStepState)
 		info.WorkloadRef = RolloutWorkloadRef{
-			Kind:            r.Spec.WorkloadRef.Kind,
-			Name:            r.Spec.WorkloadRef.Name,
-			StableRevision:  r.Status.CanaryStatus.StableRevision,
-			CanaryRevision:  r.Status.CanaryStatus.CanaryRevision,
-			PodTemplateHash: r.Status.CanaryStatus.PodTemplateHash,
+			Kind:             r.Spec.WorkloadRef.Kind,
+			Name:             r.Spec.WorkloadRef.Name,
+			StableRevision:   r.Status.CanaryStatus.StableRevision,
+			CanaryRevision:   r.Status.CanaryStatus.CanaryRevision,
+			PodTemplateHash:  r.Status.CanaryStatus.PodTemplateHash,
+			CurrentStepIndex: r.Status.CanaryStatus.CurrentStepIndex,
 		}
 
 		if r.Spec.Strategy.Canary != nil {
@@ -564,11 +578,12 @@ func extractRolloutInfo(obj interface{}) *RolloutInfo {
 		info.CurrentStepIndex = r.Status.CanaryStatus.CurrentStepIndex
 		info.CurrentStepState = string(r.Status.CanaryStatus.CurrentStepState)
 		info.WorkloadRef = RolloutWorkloadRef{
-			Kind:            r.Spec.ObjectRef.WorkloadRef.Kind,
-			Name:            r.Spec.ObjectRef.WorkloadRef.Name,
-			StableRevision:  r.Status.CanaryStatus.StableRevision,
-			CanaryRevision:  r.Status.CanaryStatus.CanaryRevision,
-			PodTemplateHash: r.Status.CanaryStatus.PodTemplateHash,
+			Kind:             r.Spec.ObjectRef.WorkloadRef.Kind,
+			Name:             r.Spec.ObjectRef.WorkloadRef.Name,
+			StableRevision:   r.Status.CanaryStatus.StableRevision,
+			CanaryRevision:   r.Status.CanaryStatus.CanaryRevision,
+			PodTemplateHash:  r.Status.CanaryStatus.PodTemplateHash,
+			CurrentStepIndex: r.Status.CanaryStatus.CurrentStepIndex,
 		}
 
 		if r.Spec.Strategy.Canary != nil {
