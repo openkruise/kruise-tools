@@ -106,7 +106,7 @@ func TestRolloutRollbackGetter(t *testing.T) {
 				newStep("10%", ""),
 			}),
 			targetStep:  2,
-			expectedErr: "already at the first step, use kubectl-kruise rollout undo to cancel the release",
+			expectedErr: "already at the first step",
 		},
 		{
 			name: "current step index out of range",
