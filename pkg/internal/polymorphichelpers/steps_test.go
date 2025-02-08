@@ -126,7 +126,7 @@ func TestRolloutRollbackGetter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rollback := rolloutRollbackGetter(tt.targetStep)
+			rollback := defaultRolloutRollbackGetter(tt.targetStep)
 			for _, rollout := range tt.rollout {
 				data, err := rollback(rollout)
 				if tt.expectedErr != "" {

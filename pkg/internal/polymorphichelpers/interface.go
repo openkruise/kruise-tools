@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
+	"k8s.io/kubectl/pkg/cmd/set"
 )
 
 // LogsForObjectFunc is a function type that can tell you how to get logs for a runtime.object
@@ -125,8 +126,5 @@ type ObjectRestarterFunc func(runtime.Object) ([]byte, error)
 // Returns the patched object in bytes and any error that occurred during the encoding.
 var ObjectRestarterFn ObjectRestarterFunc = defaultObjectRestarter
 
-// RolloutRollbackFuncGetter is a function type that rollbacks a rollout process.
-type RolloutRollbackFuncGetter func(int32) func(runtime.Object) ([]byte, error)
-
-// RolloutRollbackGetter gives a way to easily override the function for unit testing if needed.
-var RolloutRollbackGetter RolloutRollbackFuncGetter = rolloutRollbackGetter
+// DefaultFastRollbackFunc is a function type that rollbacks a rollout process.
+var DefaultFastRollbackFunc set.PatchFn = defaultRolloutRollbackGetter(-1)

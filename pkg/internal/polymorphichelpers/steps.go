@@ -10,7 +10,7 @@ import (
 	"k8s.io/kubectl/pkg/scheme"
 )
 
-func rolloutRollbackGetter(targetStep int32) func(runtime.Object) ([]byte, error) {
+func defaultRolloutRollbackGetter(targetStep int32) func(runtime.Object) ([]byte, error) {
 	return func(obj runtime.Object) ([]byte, error) {
 		switch rollout := obj.(type) {
 		case *v1beta1.Rollout:
@@ -20,7 +20,7 @@ func rolloutRollbackGetter(targetStep int32) func(runtime.Object) ([]byte, error
 				return nil, fmt.Errorf("has %d steps, but current step is too large %d", len(steps), curStep)
 			}
 			if curStep <= 1 {
-				return nil, fmt.Errorf("already at the first step, use kubectl-kruise rollout undo to cancel the release")
+				return nil, fmt.Errorf("already at the first step")
 			}
 			if targetStep == -1 {
 				s, err := findPreviousStepWithNoTrafficAndMostReplicas(steps, rollout.Status.CurrentStepIndex)
