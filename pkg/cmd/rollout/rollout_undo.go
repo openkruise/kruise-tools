@@ -23,13 +23,16 @@ import (
 	rolloutsapiv1alpha1 "github.com/openkruise/kruise-rollout-api/rollouts/v1alpha1"
 	rolloutsapiv1beta1 "github.com/openkruise/kruise-rollout-api/rollouts/v1beta1"
 	internalapi "github.com/openkruise/kruise-tools/pkg/api"
+	"github.com/openkruise/kruise-tools/pkg/cmd/util"
 	internalpolymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/kubectl/pkg/cmd/set"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -49,6 +52,8 @@ type UndoOptions struct {
 	Namespace        string
 	EnforceNamespace bool
 	RESTClientGetter genericclioptions.RESTClientGetter
+
+	Fast bool // fast rollback for blue-green
 
 	resource.FilenameOptions
 	genericclioptions.IOStreams
@@ -72,7 +77,10 @@ var (
 		kubectl-kruise rollout undo --dry-run=server deployment/abc
 		
 		# Rollback to workload via rollout api object
-		kubectl-kruise rollout undo rollout/abc`)
+		kubectl-kruise rollout undo rollout/abc
+
+		# Fast rollback during blue-green release (will go back to a previous step with no traffic and most replicas)
+		kubectl-kruise rollout undo rollout/abc --fast`)
 )
 
 // NewRolloutUndoOptions returns an initialized UndoOptions instance
@@ -99,12 +107,17 @@ func NewCmdRolloutUndo(f cmdutil.Factory, streams genericclioptions.IOStreams) *
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(o.Complete(f, cmd, args))
 			cmdutil.CheckErr(o.Validate())
-			cmdutil.CheckErr(o.RunUndo())
+			if o.Fast {
+				cmdutil.CheckErr(o.FastUndo())
+			} else {
+				cmdutil.CheckErr(o.RunUndo())
+			}
 		},
 		ValidArgs: validArgs,
 	}
 
 	cmd.Flags().Int64Var(&o.ToRevision, "to-revision", o.ToRevision, "The revision to rollback to. Default to 0 (last revision).")
+	cmd.Flags().BoolVar(&o.Fast, "fast", false, "fast rollback for blue-green release")
 	usage := "identifying the resource to get from a server."
 	cmdutil.AddFilenameOptionFlags(cmd, &o.FilenameOptions, usage)
 	cmdutil.AddDryRunFlag(cmd)
@@ -142,6 +155,76 @@ func (o *UndoOptions) Validate() error {
 		return fmt.Errorf("required resource not specified")
 	}
 	return nil
+}
+
+func (o *UndoOptions) FastUndo() error {
+	r := o.Builder().
+		WithScheme(internalapi.GetScheme(), scheme.Scheme.PrioritizedVersionsAllGroups()...).
+		NamespaceParam(o.Namespace).DefaultNamespace().
+		FilenameParam(o.EnforceNamespace, &o.FilenameOptions).
+		ResourceTypeOrNameArgs(true, o.Resources...).
+		ContinueOnError().
+		Latest().
+		Flatten().
+		Do()
+	if err := r.Err(); err != nil {
+		return err
+	}
+
+	allErrs := []error{}
+	infos, err := r.Infos()
+	if err != nil {
+		// restore previous command behavior where
+		// an error caused by retrieving infos due to
+		// at least a single broken object did not result
+		// in an immediate return, but rather an overall
+		// aggregation of errors.
+		allErrs = append(allErrs, err)
+	}
+
+	for _, patch := range set.CalculatePatches(infos, scheme.DefaultJSONEncoder(), internalpolymorphichelpers.DefaultFastRollbackFunc) {
+		info := patch.Info
+
+		if patch.Err != nil {
+			resourceString := info.Mapping.Resource.Resource
+			if len(info.Mapping.Resource.Group) > 0 {
+				resourceString = resourceString + "." + info.Mapping.Resource.Group
+			}
+			allErrs = append(allErrs, fmt.Errorf("error: %s %q %v", resourceString, info.Name, patch.Err))
+			continue
+		}
+
+		if string(patch.Patch) == "{}" || len(patch.Patch) == 0 {
+			printer, err := o.ToPrinter("already rolled back")
+			if err != nil {
+				allErrs = append(allErrs, err)
+				continue
+			}
+			if err = printer.PrintObj(info.Object, o.Out); err != nil {
+				allErrs = append(allErrs, err)
+			}
+			continue
+		}
+
+		obj, err := util.PatchSubResource(info.Client, info.Mapping.Resource.Resource, "status", info.Namespace, info.Name, info.Namespaced(), types.MergePatchType, patch.Patch, nil)
+		if err != nil {
+			allErrs = append(allErrs, fmt.Errorf("failed to patch: %v", err))
+			continue
+		}
+
+		info.Refresh(obj, true)
+		printer, err := o.ToPrinter("rolled back" +
+			"")
+		if err != nil {
+			allErrs = append(allErrs, err)
+			continue
+		}
+		if err = printer.PrintObj(info.Object, o.Out); err != nil {
+			allErrs = append(allErrs, err)
+		}
+	}
+
+	return errors.NewAggregate(allErrs)
 }
 
 // RunUndo performs the execution of 'rollout undo' sub command
