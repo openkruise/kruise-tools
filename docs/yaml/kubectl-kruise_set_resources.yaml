@@ -8,7 +8,7 @@ description: |-
 
      Possible resources include (case insensitive):
 
-      pod (po), deployment (deploy), statefulset (sts), daemonset (ds), replicaset (rs), cloneset (clone), statefulset.apps.kruise.io (asts), daemonset.apps.kruise.io (ads)
+            pod (po), deployment (deploy), statefulset (sts), daemonset (ds), replicaset (rs), cloneset (clone), statefulset.apps.kruise.io (asts), daemonset.apps.kruise.io (ads)
 usage: kubectl-kruise set resources (-f FILENAME | TYPE NAME)  ([--limits=LIMITS & --requests=REQUESTS]
 options:
     - name: all
@@ -98,6 +98,10 @@ inherited_options:
       usage: The name of the kubeconfig cluster to use
     - name: context
       usage: The name of the kubeconfig context to use
+    - name: disable-compression
+      default_value: "false"
+      usage: |
+        If true, opt-out of response compression for all requests to the server
     - name: insecure-skip-tls-verify
       default_value: "false"
       usage: |

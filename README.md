@@ -103,6 +103,9 @@ $ kubectl kruise rollout approve rollout/rollout-demo -n ns-demo`
 
 # undo a kruise rollout resource
 $ kubectl kruise rollout undo rollout/rollout-demo
+
+ # Fast rollback during blue-green release (will go back to a previous step with no traffic and most replicas)
+$ kubectl kruise rollout undo rollout/rollout-demo --fast
 ```
 
 ### set

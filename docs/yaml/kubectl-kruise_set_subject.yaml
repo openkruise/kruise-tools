@@ -86,6 +86,10 @@ inherited_options:
       usage: The name of the kubeconfig cluster to use
     - name: context
       usage: The name of the kubeconfig context to use
+    - name: disable-compression
+      default_value: "false"
+      usage: |
+        If true, opt-out of response compression for all requests to the server
     - name: insecure-skip-tls-verify
       default_value: "false"
       usage: |
