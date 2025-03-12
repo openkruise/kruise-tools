@@ -1,6 +1,6 @@
 name: kubectl-kruise rollout
 synopsis: Manage the rollout of a resource
-description: "Manage the rollout of a resource.\n  \n Valid resource types include:\n\n  * deployments\n  * daemonsets\n  * statefulsets\n  * clonesets\n  * statefulsets.apps.kruise.io\n  * daemonsets.apps.kruise.io\n  * rollouts.rollouts.kruise.io"
+description: "Manage the rollout of a resource.\n        \n Valid resource types include:\n\n        * deployments\n        * daemonsets\n        * statefulsets\n        * clonesets\n        * statefulsets.apps.kruise.io\n        * daemonsets.apps.kruise.io\n        * rollouts.rollouts.kruise.io"
 usage: kubectl-kruise rollout SUBCOMMAND
 options:
     - name: help
@@ -30,6 +30,10 @@ inherited_options:
       usage: The name of the kubeconfig cluster to use
     - name: context
       usage: The name of the kubeconfig context to use
+    - name: disable-compression
+      default_value: "false"
+      usage: |
+        If true, opt-out of response compression for all requests to the server
     - name: insecure-skip-tls-verify
       default_value: "false"
       usage: |

@@ -11,6 +11,9 @@ options:
       default_value: none
       usage: |
         Must be "none", "server", or "client". If client strategy, only print the object that would be sent, without sending it. If server strategy, submit server-side request without persisting the resource.
+    - name: fast
+      default_value: "false"
+      usage: fast rollback for blue-green release
     - name: filename
       shorthand: f
       default_value: '[]'
@@ -66,6 +69,10 @@ inherited_options:
       usage: The name of the kubeconfig cluster to use
     - name: context
       usage: The name of the kubeconfig context to use
+    - name: disable-compression
+      default_value: "false"
+      usage: |
+        If true, opt-out of response compression for all requests to the server
     - name: insecure-skip-tls-verify
       default_value: "false"
       usage: |
@@ -107,6 +114,6 @@ inherited_options:
       default_value: "false"
       usage: |
         Treat warnings received from the server as errors and exit with a non-zero exit code
-example: "  # Rollback to the previous cloneset\n  kubectl-kruise rollout undo cloneset/abc\n  \n  # Rollback to the previous Advanced StatefulSet\n  kubectl-kruise rollout undo asts/abc\n  \n  # Rollback to daemonset revision 3\n  kubectl-kruise rollout undo daemonset/abc --to-revision=3\n  \n  # Rollback to the previous deployment with dry-run\n  kubectl-kruise rollout undo --dry-run=server deployment/abc\n  \n  # Rollback to workload via rollout api object\n  kubectl-kruise rollout undo rollout/abc"
+example: "  # Rollback to the previous cloneset\n  kubectl-kruise rollout undo cloneset/abc\n  \n  # Rollback to the previous Advanced StatefulSet\n  kubectl-kruise rollout undo asts/abc\n  \n  # Rollback to daemonset revision 3\n  kubectl-kruise rollout undo daemonset/abc --to-revision=3\n  \n  # Rollback to the previous deployment with dry-run\n  kubectl-kruise rollout undo --dry-run=server deployment/abc\n  \n  # Rollback to workload via rollout api object\n  kubectl-kruise rollout undo rollout/abc\n  \n  # Fast rollback during blue-green release (will go back to a previous step with no traffic and most replicas)\n  kubectl-kruise rollout undo rollout/abc --fast"
 see_also:
     - kubectl-kruise rollout - Manage the rollout of a resource

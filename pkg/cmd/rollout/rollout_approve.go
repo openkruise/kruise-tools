@@ -128,7 +128,7 @@ func (o *ApproveOptions) Validate() error {
 }
 
 // RunApprove performs the execution of 'rollout approve' sub command
-func (o ApproveOptions) RunApprove() error {
+func (o *ApproveOptions) RunApprove() error {
 	r := o.Builder().
 		WithScheme(internalapi.GetScheme(), scheme.Scheme.PrioritizedVersionsAllGroups()...).
 		NamespaceParam(o.Namespace).DefaultNamespace().
