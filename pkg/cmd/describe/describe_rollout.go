@@ -114,9 +114,11 @@ type RolloutInfo struct {
 	Generation         int64
 	CurrentStepIndex   int32
 	CurrentStepState   string
-	Strategy           rolloutsapiv1beta1.CanaryStrategy
+	CanaryStrategy     rolloutsapiv1beta1.CanaryStrategy
+	BlueGreenStrategy  rolloutsapiv1beta1.BlueGreenStrategy
 	TrafficRoutingRef  string
 	WorkloadRef        RolloutWorkloadRef
+	StrategyType       string
 }
 
 func NewCmdDescribeRollout(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
@@ -294,6 +296,7 @@ type RolloutWorkloadRef struct {
 	Name             string
 	StableRevision   string
 	CanaryRevision   string
+	UpdatedRevision  string
 	PodTemplateHash  string
 	CurrentStepIndex int32
 }
@@ -369,6 +372,10 @@ func (o *DescribeRolloutOptions) GetResources(rollout RolloutWorkloadRef) (*Work
 
 	workloadInfo.CurrentRevision = rollout.StableRevision
 	workloadInfo.UpdateRevision = rollout.CanaryRevision
+
+	if rollout.UpdatedRevision != "" {
+		workloadInfo.UpdateRevision = rollout.UpdatedRevision
+	}
 
 	var labelSelectorParam string
 	switch obj.(type) {
@@ -507,6 +514,10 @@ func (o *DescribeRolloutOptions) colorizeIcon(phase string) string {
 }
 
 func (o *DescribeRolloutOptions) printTrafficRouting(trafficRouting []rolloutsapiv1beta1.TrafficRoutingRef) {
+	if len(trafficRouting) == 0 {
+		return
+	}
+
 	fmt.Fprint(o.Out, "Traffic Routings:\n")
 	for _, trafficRouting := range trafficRouting {
 		fmt.Fprintf(o.Out, tableFormat, "  -  Service: ", trafficRouting.Service)
@@ -553,19 +564,37 @@ func extractRolloutInfo(obj interface{}) *RolloutInfo {
 		info.Message = r.Status.Message
 		info.ObservedGeneration = r.Status.ObservedGeneration
 		info.Generation = r.GetObjectMeta().GetGeneration()
-		info.CurrentStepIndex = r.Status.CanaryStatus.CurrentStepIndex
-		info.CurrentStepState = string(r.Status.CanaryStatus.CurrentStepState)
-		info.WorkloadRef = RolloutWorkloadRef{
-			Kind:             r.Spec.WorkloadRef.Kind,
-			Name:             r.Spec.WorkloadRef.Name,
-			StableRevision:   r.Status.CanaryStatus.StableRevision,
-			CanaryRevision:   r.Status.CanaryStatus.CanaryRevision,
-			PodTemplateHash:  r.Status.CanaryStatus.PodTemplateHash,
-			CurrentStepIndex: r.Status.CanaryStatus.CurrentStepIndex,
+		if r.Spec.Strategy.BlueGreen != nil {
+			info.CurrentStepIndex = r.Status.BlueGreenStatus.CurrentStepIndex
+			info.CurrentStepState = string(r.Status.BlueGreenStatus.CurrentStepState)
+			info.WorkloadRef = RolloutWorkloadRef{
+				Kind:             r.Spec.WorkloadRef.Kind,
+				Name:             r.Spec.WorkloadRef.Name,
+				StableRevision:   r.Status.BlueGreenStatus.StableRevision,
+				UpdatedRevision:  r.Status.BlueGreenStatus.UpdatedRevision,
+				PodTemplateHash:  r.Status.BlueGreenStatus.PodTemplateHash,
+				CurrentStepIndex: r.Status.BlueGreenStatus.CurrentStepIndex,
+			}
+		} else {
+			info.CurrentStepIndex = r.Status.CanaryStatus.CurrentStepIndex
+			info.CurrentStepState = string(r.Status.CanaryStatus.CurrentStepState)
+			info.WorkloadRef = RolloutWorkloadRef{
+				Kind:             r.Spec.WorkloadRef.Kind,
+				Name:             r.Spec.WorkloadRef.Name,
+				StableRevision:   r.Status.CanaryStatus.StableRevision,
+				CanaryRevision:   r.Status.CanaryStatus.CanaryRevision,
+				PodTemplateHash:  r.Status.CanaryStatus.PodTemplateHash,
+				CurrentStepIndex: r.Status.CanaryStatus.CurrentStepIndex,
+			}
 		}
 
 		if r.Spec.Strategy.Canary != nil {
+			info.CanaryStrategy = *r.Spec.Strategy.Canary
+			info.StrategyType = "Canary"
 			info.TrafficRoutingRef = r.Spec.Strategy.Canary.TrafficRoutingRef
+		} else if r.Spec.Strategy.BlueGreen != nil {
+			info.BlueGreenStrategy = *r.Spec.Strategy.BlueGreen
+			info.StrategyType = "BlueGreen"
 		}
 
 	case *rolloutsapiv1alpha1.Rollout:
@@ -587,12 +616,16 @@ func extractRolloutInfo(obj interface{}) *RolloutInfo {
 		}
 
 		if r.Spec.Strategy.Canary != nil {
+			info.StrategyType = "Canary"
 			info.TrafficRoutingRef = r.ObjectMeta.Annotations["rollouts.kruise.io/trafficrouting"]
 		}
+		// BlueGreen strategy is not supported in v1alpha1 API
 	}
 
 	if obj.(*rolloutsapiv1beta1.Rollout).Spec.Strategy.Canary != nil {
-		info.Strategy = *obj.(*rolloutsapiv1beta1.Rollout).Spec.Strategy.Canary
+		info.CanaryStrategy = *obj.(*rolloutsapiv1beta1.Rollout).Spec.Strategy.Canary
+	} else if obj.(*rolloutsapiv1beta1.Rollout).Spec.Strategy.BlueGreen != nil {
+		info.BlueGreenStrategy = *obj.(*rolloutsapiv1beta1.Rollout).Spec.Strategy.BlueGreen
 	}
 
 	return info
@@ -657,16 +690,19 @@ func (o *DescribeRolloutOptions) printRolloutInfo(rollout interface{}) {
 	}
 
 	// Print strategy
-	fmt.Fprintf(o.Out, tableFormat, "Strategy:", "Canary")
-	fmt.Fprintf(o.Out, tableFormat, " Step:", strconv.Itoa(int(info.CurrentStepIndex))+"/"+strconv.Itoa(len(info.Strategy.Steps)))
+	fmt.Fprintf(o.Out, tableFormat, "Strategy:", info.StrategyType)
 
-	// Print steps
-	fmt.Fprint(o.Out, " Steps:\n")
-	o.printSteps(info)
+	if info.StrategyType == "Canary" {
+		fmt.Fprintf(o.Out, tableFormat, " Step:", strconv.Itoa(int(info.CurrentStepIndex))+"/"+strconv.Itoa(len(info.CanaryStrategy.Steps)))
+		fmt.Fprint(o.Out, " Steps:\n")
+		o.printSteps(info)
+		o.printTrafficRouting(info.CanaryStrategy.TrafficRoutings)
 
-	// Print traffic routing if available
-	if len(info.Strategy.TrafficRoutings) > 0 {
-		o.printTrafficRouting(info.Strategy.TrafficRoutings)
+	} else if info.StrategyType == "BlueGreen" {
+		fmt.Fprintf(o.Out, tableFormat, " Step:", strconv.Itoa(int(info.CurrentStepIndex))+"/"+strconv.Itoa(len(info.BlueGreenStrategy.Steps)))
+		fmt.Fprint(o.Out, " Steps:\n")
+		o.printSteps(info)
+		o.printTrafficRouting(info.BlueGreenStrategy.TrafficRoutings)
 	}
 
 	if info.TrafficRoutingRef != "" {
@@ -707,7 +743,13 @@ func (o *DescribeRolloutOptions) printRolloutInfo(rollout interface{}) {
 func (o *DescribeRolloutOptions) printSteps(info *RolloutInfo) {
 	currentStepIndex := int(info.CurrentStepIndex)
 
-	for i, step := range info.Strategy.Steps {
+	Steps := info.CanaryStrategy.Steps
+
+	if info.StrategyType == "BlueGreen" {
+		Steps = info.BlueGreenStrategy.Steps
+	}
+
+	for i, step := range Steps {
 		isCurrentStep := (i + 1) == currentStepIndex
 		if isCurrentStep {
 			fmt.Fprint(o.Out, "\033[32m")
