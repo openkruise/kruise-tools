@@ -63,6 +63,10 @@ type UpdatePodSpecForObjectFunc func(obj runtime.Object, fn func(*v1.PodSpec) er
 // UpdatePodSpecForObjectFn gives a way to easily override the function for unit testing if needed
 var UpdatePodSpecForObjectFn UpdatePodSpecForObjectFunc = updatePodSpecForObject
 
+type GetViewerFunc func(obj runtime.Object) (interface{}, error)
+
+var GetViewerFn GetViewerFunc = getViewer
+
 // MapBasedSelectorForObjectFunc will call the provided function on mapping the baesd selector for object,
 // return "" if object is not supported, or return an error.
 type MapBasedSelectorForObjectFunc func(object runtime.Object) (string, error)
