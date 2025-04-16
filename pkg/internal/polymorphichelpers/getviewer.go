@@ -34,7 +34,12 @@ func getViewer(obj runtime.Object) (interface{}, error) {
 		*kruiseappsv1beta1.StatefulSet,
 		*kruiseappsv1alpha1.DaemonSet,
 		*rolloutv1beta1.Rollout,
-		*rolloutv1alpha1.Rollout:
+		*rolloutv1alpha1.Rollout,
+		*kruiseappsv1alpha1.BroadcastJob,
+		*kruiseappsv1alpha1.ContainerRecreateRequest,
+		*kruiseappsv1alpha1.AdvancedCronJob,
+		*kruiseappsv1alpha1.ResourceDistribution,
+		*kruiseappsv1alpha1.UnitedDeployment:
 		return printers.NewTablePrinter(printers.PrintOptions{
 			WithKind:      true,
 			WithNamespace: true,

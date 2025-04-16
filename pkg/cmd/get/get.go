@@ -110,6 +110,11 @@ func (o *GetOptions) Run() error {
 			"statefulsets.apps.kruise.io",
 			"daemonsets.apps.kruise.io",
 			"rollouts.rollouts.kruise.io",
+			"broadcastjobs.apps.kruise.io",
+			"containerrecreaterequests.apps.kruise.io",
+			"advancedcronjobs.apps.kruise.io",
+			"resourcedistributions.apps.kruise.io",
+			"uniteddeployments.apps.kruise.io",
 		}
 
 		for _, resourceType := range resourceTypes {
@@ -142,6 +147,21 @@ func (o *GetOptions) Run() error {
 				case "rollouts.rollouts.kruise.io":
 					fmt.Fprintf(o.Out, "%-20s\t%-8s\t%-12s\t%-12s\t%-40s\t%-s\n",
 						"NAME", "STATUS", "CANARY_STEP", "CANARY_STATE", "MESSAGE", "AGE")
+				case "broadcastjobs.apps.kruise.io":
+					fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-8s\t%-8s\t%-s\n",
+						"NAME", "DESIRED", "ACTIVE", "SUCCEEDED", "FAILED", "AGE")
+				case "containerrecreaterequests.apps.kruise.io":
+					fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-8s\t%-s\n",
+						"NAME", "PHASE", "COMPLETED", "FAILED", "AGE")
+				case "advancedcronjobs.apps.kruise.io":
+					fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-8s\t%-8s\t%-s\n",
+						"NAME", "SCHEDULE", "SUSPEND", "ACTIVE", "LAST SCHEDULE", "AGE")
+				case "resourcedistributions.apps.kruise.io":
+					fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-8s\t%-s\n",
+						"NAME", "TARGETS", "SUCCEEDED", "FAILED", "AGE")
+				case "uniteddeployments.apps.kruise.io":
+					fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-8s\t%-8s\t%-s\n",
+						"NAME", "DESIRED", "UPDATED", "READY", "AVAILABLE", "AGE")
 				}
 
 				for _, info := range infos {
@@ -182,6 +202,21 @@ func (o *GetOptions) Run() error {
 		case "rollouts.rollouts.kruise.io":
 			fmt.Fprintf(o.Out, "%-20s\t%-8s\t%-12s\t%-12s\t%-40s\t%-s\n",
 				"NAME", "STATUS", "CANARY_STEP", "CANARY_STATE", "MESSAGE", "AGE")
+		case "broadcastjobs.apps.kruise.io":
+			fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-8s\t%-8s\t%-s\n",
+				"NAME", "DESIRED", "ACTIVE", "SUCCEEDED", "FAILED", "AGE")
+		case "containerrecreaterequests.apps.kruise.io":
+			fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-8s\t%-s\n",
+				"NAME", "PHASE", "COMPLETED", "FAILED", "AGE")
+		case "advancedcronjobs.apps.kruise.io":
+			fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-8s\t%-8s\t%-s\n",
+				"NAME", "SCHEDULE", "SUSPEND", "ACTIVE", "LAST SCHEDULE", "AGE")
+		case "resourcedistributions.apps.kruise.io":
+			fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-8s\t%-s\n",
+				"NAME", "TARGETS", "SUCCEEDED", "FAILED", "AGE")
+		case "uniteddeployments.apps.kruise.io":
+			fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-8s\t%-8s\t%-s\n",
+				"NAME", "DESIRED", "UPDATED", "READY", "AVAILABLE", "AGE")
 		}
 
 		for _, info := range infos {
@@ -271,6 +306,54 @@ func (o *GetOptions) printResourceInfo(obj runtime.Object, resourceType string) 
 		}
 		fmt.Fprintf(o.Out, "%-20s\t%-8s\t%-12d\t%-12s\t%-40s\t%-s\n",
 			name, status, canaryStep, canaryState, message, age)
+	case "broadcastjobs.apps.kruise.io":
+		broadcastjob, ok := obj.(*kruiseappsv1alpha1.BroadcastJob)
+		if !ok {
+			return fmt.Errorf("object is not a BroadcastJob")
+		}
+		desired := broadcastjob.Spec.Parallelism
+		active := broadcastjob.Status.Active
+		successful := broadcastjob.Status.Succeeded
+		failed := broadcastjob.Status.Failed
+		fmt.Fprintf(o.Out, "%-12s\t%-8d\t%-8d\t%-8d\t%-8d\t%-s\n",
+			name, *desired, active, successful, failed, age)
+	case "containerrecreaterequests.apps.kruise.io":
+		containerrecreaterequest, ok := obj.(*kruiseappsv1alpha1.ContainerRecreateRequest)
+		if !ok {
+			return fmt.Errorf("object is not a ContainerRecreateRequest")
+		}
+		phase := containerrecreaterequest.Status.Phase
+		fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-8s\t%-s\n",
+			name, phase, "-", "-", age)
+	case "advancedcronjobs.apps.kruise.io":
+		advancedcronjob, ok := obj.(*kruiseappsv1alpha1.AdvancedCronJob)
+		if !ok {
+			return fmt.Errorf("object is not a AdvancedCronJob")
+		}
+		schedule := advancedcronjob.Spec.Schedule
+		suspend := advancedcronjob.Spec.Paused
+		active := len(advancedcronjob.Status.Active)
+		lastSchedule := advancedcronjob.Status.LastScheduleTime
+		fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8v\t%-8d\t%-8s\t%-s\n",
+			name, schedule, suspend, active, lastSchedule, age)
+	case "resourcedistributions.apps.kruise.io":
+		_, ok := obj.(*kruiseappsv1alpha1.ResourceDistribution)
+		if !ok {
+			return fmt.Errorf("object is not a ResourceDistribution")
+		}
+		fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-8s\t%-s\n",
+			name, "-", "-", "-", age)
+	case "uniteddeployments.apps.kruise.io":
+		uniteddeployment, ok := obj.(*kruiseappsv1alpha1.UnitedDeployment)
+		if !ok {
+			return fmt.Errorf("object is not a UnitedDeployment")
+		}
+		desired := uniteddeployment.Spec.Replicas
+		updated := uniteddeployment.Status.UpdatedReplicas
+		ready := uniteddeployment.Status.ReadyReplicas
+		total := uniteddeployment.Status.Replicas
+		fmt.Fprintf(o.Out, "%-12s\t%-8d\t%-8d\t%-8d\t%-8d\t%-s\n",
+			name, *desired, updated, ready, total, age)
 	}
 
 	return nil
