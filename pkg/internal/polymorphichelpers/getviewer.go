@@ -21,6 +21,7 @@ import (
 
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
+	kruisepolicyv1alpha1 "github.com/openkruise/kruise-api/policy/v1alpha1"
 	rolloutv1alpha1 "github.com/openkruise/kruise-rollout-api/rollouts/v1alpha1"
 	rolloutv1beta1 "github.com/openkruise/kruise-rollout-api/rollouts/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -39,7 +40,11 @@ func getViewer(obj runtime.Object) (interface{}, error) {
 		*kruiseappsv1alpha1.ContainerRecreateRequest,
 		*kruiseappsv1alpha1.AdvancedCronJob,
 		*kruiseappsv1alpha1.ResourceDistribution,
-		*kruiseappsv1alpha1.UnitedDeployment:
+		*kruiseappsv1alpha1.UnitedDeployment,
+		*kruiseappsv1alpha1.SidecarSet,
+		*kruiseappsv1alpha1.PodProbeMarker,
+		*kruiseappsv1alpha1.ImagePullJob,
+		*kruisepolicyv1alpha1.PodUnavailableBudget:
 		return printers.NewTablePrinter(printers.PrintOptions{
 			WithKind:      true,
 			WithNamespace: true,

@@ -22,6 +22,7 @@ import (
 
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
+	kruisepolicyv1alpha1 "github.com/openkruise/kruise-api/policy/v1alpha1"
 	rolloutv1alpha1 "github.com/openkruise/kruise-rollout-api/rollouts/v1alpha1"
 	rolloutv1beta1 "github.com/openkruise/kruise-rollout-api/rollouts/v1beta1"
 	internalpolymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
@@ -115,6 +116,10 @@ func (o *GetOptions) Run() error {
 			"advancedcronjobs.apps.kruise.io",
 			"resourcedistributions.apps.kruise.io",
 			"uniteddeployments.apps.kruise.io",
+			"sidecarsets.apps.kruise.io",
+			"podprobemarkers.apps.kruise.io",
+			"imagepulljobs.apps.kruise.io",
+			"podunavailablebudgets.policy.kruise.io",
 		}
 
 		for _, resourceType := range resourceTypes {
@@ -125,6 +130,10 @@ func (o *GetOptions) Run() error {
 				ContinueOnError().
 				Latest().
 				Flatten()
+
+			if resourceType == "sidecarsets.apps.kruise.io" {
+				b = b.AllNamespaces(true)
+			}
 
 			infos, err := b.Do().Infos()
 			if err != nil {
@@ -162,6 +171,18 @@ func (o *GetOptions) Run() error {
 				case "uniteddeployments.apps.kruise.io":
 					fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-8s\t%-8s\t%-s\n",
 						"NAME", "DESIRED", "UPDATED", "READY", "AVAILABLE", "AGE")
+				case "sidecarsets.apps.kruise.io":
+					fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-8s\t%-8s\t%-s\n",
+						"NAME", "MATCHED", "UPDATED", "READY", "INJECTED", "AGE")
+				case "podprobemarkers.apps.kruise.io":
+					fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-s\n",
+						"NAME", "TARGETS", "PROBES", "AGE")
+				case "imagepulljobs.apps.kruise.io":
+					fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-8s\t%-8s\t%-s\n",
+						"NAME", "PHASE", "COMPLETED", "FAILED", "TOTAL", "AGE")
+				case "podunavailablebudgets.policy.kruise.io":
+					fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-8s\t%-8s\t%-s\n",
+						"NAME", "MAXUNAVAILABLE", "UNAVAILABLE", "DISRUPTIONS", "TARGETS", "AGE")
 				}
 
 				for _, info := range infos {
@@ -354,6 +375,46 @@ func (o *GetOptions) printResourceInfo(obj runtime.Object, resourceType string) 
 		total := uniteddeployment.Status.Replicas
 		fmt.Fprintf(o.Out, "%-12s\t%-8d\t%-8d\t%-8d\t%-8d\t%-s\n",
 			name, *desired, updated, ready, total, age)
+	case "sidecarsets.apps.kruise.io":
+		sidecarset, ok := obj.(*kruiseappsv1alpha1.SidecarSet)
+		if !ok {
+			return fmt.Errorf("object is not a SidecarSet")
+		}
+		matched := sidecarset.Status.MatchedPods
+		updated := sidecarset.Status.UpdatedPods
+		ready := sidecarset.Status.ReadyPods
+		fmt.Fprintf(o.Out, "%-12s\t%-8d\t%-8d\t%-8d\t%-8s\t%-s\n",
+			name, matched, updated, ready, "-", age)
+	case "podprobemarkers.apps.kruise.io":
+		podprobemarker, ok := obj.(*kruiseappsv1alpha1.PodProbeMarker)
+		if !ok {
+			return fmt.Errorf("object is not a PodProbeMarker")
+		}
+		targets := len(podprobemarker.Spec.Selector.MatchLabels)
+		probes := len(podprobemarker.Spec.Probes)
+		fmt.Fprintf(o.Out, "%-12s\t%-8d\t%-8d\t%-s\n",
+			name, targets, probes, age)
+	case "imagepulljobs.apps.kruise.io":
+		imagepulljob, ok := obj.(*kruiseappsv1alpha1.ImagePullJob)
+		if !ok {
+			return fmt.Errorf("object is not a ImagePullJob")
+		}
+		completed := imagepulljob.Status.Succeeded
+		failed := imagepulljob.Status.Failed
+		total := imagepulljob.Status.Desired
+		fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8d\t%-8d\t%-8d\t%-s\n",
+			name, "-", completed, failed, total, age)
+	case "podunavailablebudgets.policy.kruise.io":
+		pub, ok := obj.(*kruisepolicyv1alpha1.PodUnavailableBudget)
+		if !ok {
+			return fmt.Errorf("object is not a PodUnavailableBudget")
+		}
+		maxUnavailable := pub.Spec.MaxUnavailable
+		unavailable := pub.Status.UnavailablePods
+		disruptions := pub.Status.DisruptedPods
+		targets := len(pub.Spec.Selector.MatchLabels)
+		fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8d\t%-8d\t%-8d\t%-s\n",
+			name, maxUnavailable.String(), unavailable, disruptions, targets, age)
 	}
 
 	return nil
