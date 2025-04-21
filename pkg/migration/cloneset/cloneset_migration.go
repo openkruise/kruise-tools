@@ -22,10 +22,7 @@ import (
 	"sync"
 	"time"
 
-	appsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
-	"github.com/openkruise/kruise-tools/pkg/api"
-	"github.com/openkruise/kruise-tools/pkg/migration"
-	"github.com/openkruise/kruise-tools/pkg/utils"
+	"k8s.io/client-go/discovery"
 
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,10 +32,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+
+	appsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
+	"github.com/openkruise/kruise-tools/pkg/api"
+	"github.com/openkruise/kruise-tools/pkg/migration"
+	"github.com/openkruise/kruise-tools/pkg/utils"
 )
 
 var (
@@ -81,10 +83,16 @@ func NewControl(cfg *rest.Config, stopChan <-chan struct{}) (migration.Control, 
 	if err != nil {
 		return nil, err
 	}
-	mapper, err := apiutil.NewDiscoveryRESTMapper(cfg, c)
+	// Get a mapper
+	dc, err := discovery.NewDiscoveryClientForConfigAndClient(cfg, c)
 	if err != nil {
 		return nil, err
 	}
+	gr, err := restmapper.GetAPIGroupResources(dc)
+	if err != nil {
+		return nil, err
+	}
+	mapper := restmapper.NewDiscoveryRESTMapper(gr)
 
 	ctrl := &control{
 		stopChan:       stopChan,
