@@ -336,8 +336,8 @@ func (o *GetOptions) printResourceInfo(obj runtime.Object, resourceType string) 
 		active := broadcastjob.Status.Active
 		successful := broadcastjob.Status.Succeeded
 		failed := broadcastjob.Status.Failed
-		fmt.Fprintf(o.Out, "%-12s\t%-8d\t%-8d\t%-8d\t%-8d\t%-s\n",
-			name, *desired, active, successful, failed, age)
+		fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8d\t%-8d\t%-8d\t%-s\n",
+			name, desired.String(), active, successful, failed, age)
 	case "containerrecreaterequests.apps.kruise.io":
 		containerrecreaterequest, ok := obj.(*kruiseappsv1alpha1.ContainerRecreateRequest)
 		if !ok {
@@ -414,7 +414,7 @@ func (o *GetOptions) printResourceInfo(obj runtime.Object, resourceType string) 
 		disruptions := pub.Status.DisruptedPods
 		targets := len(pub.Spec.Selector.MatchLabels)
 		fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8d\t%-8d\t%-8d\t%-s\n",
-			name, maxUnavailable.String(), unavailable, disruptions, targets, age)
+			name, maxUnavailable.String(), len(unavailable), len(disruptions), targets, age)
 	}
 
 	return nil
