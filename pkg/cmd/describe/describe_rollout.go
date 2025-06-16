@@ -60,10 +60,10 @@ var (
 
 	rolloutExample = templates.Examples(`
 		# Describe the rollout named rollout-demo within namespace default
-		kubectl-kruise describe rollout rollout-demo/default
+		kubectl-kruise describe rollout rollout-demo -n default
 
 		# Watch for changes to the rollout named rollout-demo
-		kubectl-kruise describe rollout rollout-demo/default -w`)
+		kubectl-kruise describe rollout rollout-demo -n default -w`)
 )
 
 type DescribeRolloutOptions struct {
@@ -158,11 +158,7 @@ func (o *DescribeRolloutOptions) Complete(f cmdutil.Factory, args []string) erro
 		return err
 	}
 
-	parts := strings.Split(args[0], "/")
-	if len(parts) == 2 {
-		o.Resources = []string{parts[0]}
-		o.Namespace = parts[1]
-	}
+	o.Resources = []string{args[0]}
 
 	o.RolloutViewerFn = internalpolymorphichelpers.RolloutViewerFn
 	o.Builder = f.NewBuilder
