@@ -6,7 +6,8 @@ Restart a resource
 
 Restart a resource.
 
-        Resource will be rollout restarted.
+        Resource will be rollout restarted. Supported kinds include:
+        CloneSet, DaemonSet, Deployment, StatefulSet, and UnitedDeployment.
 
 ```
 kubectl-kruise rollout restart RESOURCE
@@ -21,6 +22,9 @@ kubectl-kruise rollout restart RESOURCE
   
   # Restart a daemonset
   kubectl-kruise rollout restart daemonset/abc
+
+  # Restart a UnitedDeployment
+  kubectl-kruise rollout restart uniteddeployment/my-app
 ```
 
 ### Options
