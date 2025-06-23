@@ -65,7 +65,10 @@ var (
 		kubectl-kruise rollout restart cloneset/abc
 
 		# Restart a daemonset
-		kubectl-kruise rollout restart daemonset/abc`)
+		kubectl-kruise rollout restart daemonset/abc
+
+		# Restart a UnitedDeployment
+		kubectl-kruise rollout restart uniteddeployment/my-app`)
 )
 
 // NewRolloutRestartOptions returns an initialized RestartOptions instance
@@ -80,7 +83,7 @@ func NewRolloutRestartOptions(streams genericclioptions.IOStreams) *RestartOptio
 func NewCmdRolloutRestart(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	o := NewRolloutRestartOptions(streams)
 
-	validArgs := []string{"deployment", "daemonset", "statefulset", "cloneset"}
+	validArgs := []string{"deployment", "daemonset", "statefulset", "cloneset", "uniteddeployment"}
 
 	cmd := &cobra.Command{
 		Use:                   "restart RESOURCE",
