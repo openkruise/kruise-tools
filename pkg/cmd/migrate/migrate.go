@@ -66,6 +66,12 @@ func NewCmdMigrate(f cmdutil.Factory, ioStreams genericclioptions.IOStreams) *co
 
 	# Migrate replicas from an existing Deployment to an existing CloneSet.
 	kubectl-kruise migrate CloneSet --from Deployment -n default --src-name cloneset-name --dst-name deployment-name --replicas 10 --max-surge=2
+
+	# Create an empty AdvancedDaemonSet from an existing DaemonSet.
+	kubectl-kruise migrate AdvancedDaemonSet --from DaemonSet -n default --dst-name ads-name --create
+
+	# Migrate pods from a DaemonSet to an AdvancedDaemonSet.
+	kubectl-kruise migrate AdvancedDaemonSet --from DaemonSet -n default --src-name ds-name --dst-name ads-name --max-surge=1
 `,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(o.Complete(f, cmd, args))
@@ -115,16 +121,22 @@ func (o *migrateOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []
 	case "CloneSet", "cloneset", "clone":
 		o.To = "CloneSet"
 		o.DstRef = api.NewCloneSetRef(namespace, o.DstName)
+	case "AdvancedDaemonSet", "advdaemonset", "ads":
+		o.To = "AdvancedDaemonSet"
+		o.DstRef = api.NewAdvancedDaemonSetRef(namespace, o.DstName)
 	default:
-		return fmt.Errorf("currently only supported CloneSet as dst type")
+		return fmt.Errorf("currently only supported CloneSet and AdvancedDaemonSet as dst types")
 	}
 
 	switch o.From {
 	case "Deployment", "deployment":
 		o.From = "Deployment"
 		o.SrcRef = api.NewDeploymentRef(namespace, o.SrcName)
+	case "DaemonSet", "daemonset", "ds":
+		o.From = "DaemonSet"
+		o.SrcRef = api.NewDaemonSetRef(namespace, o.SrcName)
 	default:
-		return fmt.Errorf("currently only supported Deployment as src type")
+		return fmt.Errorf("currently only supported Deployment and DaemonSet as src types")
 	}
 
 	return nil
@@ -134,6 +146,8 @@ func (o *migrateOptions) Run(f cmdutil.Factory, cmd *cobra.Command) error {
 	switch o.To {
 	case "CloneSet":
 		return o.migrateCloneSet(f, cmd)
+	case "AdvancedDaemonSet":
+		return o.migrateDaemonSet(f, cmd)
 	}
 	return nil
 }
