@@ -303,6 +303,8 @@ k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 h1:BZqlfIlq5YbRMFko6/PM7F
 k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340/go.mod h1:yD4MZYeKMBwQKVht279WycxKyM84kkAx2DPrTXaeb98=
 k8s.io/kubectl v0.30.11 h1:pBk1AzDpndHl9oBfqJS9J2CGYNyik+x/QanXSERM7gE=
 k8s.io/kubectl v0.30.11/go.mod h1:a8AoybYsyppPEctupfJk4uaSy9uUWdvNfqRmSzbPPCQ=
+k8s.io/metrics v0.30.11 h1:G8+rAXti+TczPzUuHjvqBYTlXbbNYlwMXiapGEZG504=
+k8s.io/metrics v0.30.11/go.mod h1:3FIlGaB4JgsztiWhNTZizba6/ChsHgASe01bTL+zQpM=
 k8s.io/utils v0.0.0-20230726121419-3b25d923346b h1:sgn3ZU783SCgtaSJjpcVVlRqd6GSnlTLKgpAAttJvpI=
 k8s.io/utils v0.0.0-20230726121419-3b25d923346b/go.mod h1:OLgZIPagt7ERELqWJFomSt595RzquPNLL48iOWgYOg0=
 sigs.k8s.io/controller-runtime v0.18.6 h1:UnEoLBLDpQwzJ2jYh6aTdiMhGjNDR7IdFn9YEqHIccc=

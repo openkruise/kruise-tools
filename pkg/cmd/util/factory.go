@@ -24,6 +24,7 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/kubectl/pkg/util/openapi"
 	"k8s.io/kubectl/pkg/validation"
+	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 type Factory interface {
@@ -34,6 +35,9 @@ type Factory interface {
 
 	// KubernetesClientSet gives you back an external clientset
 	KubernetesClientSet() (*kubernetes.Clientset, error)
+
+	// MetricsClient gives you back a metrics clientset.
+	MetricsClient() (metricsclientset.Interface, error)
 
 	// RESTClient Returns a RESTClient for accessing Kubernetes resources or an error.
 	RESTClient() (*restclient.RESTClient, error)

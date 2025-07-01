@@ -32,6 +32,8 @@ import (
 	krollout "github.com/openkruise/kruise-tools/pkg/cmd/rollout"
 	"github.com/openkruise/kruise-tools/pkg/cmd/scaledown"
 	kset "github.com/openkruise/kruise-tools/pkg/cmd/set"
+	"github.com/openkruise/kruise-tools/pkg/cmd/top"
+	"github.com/openkruise/kruise-tools/pkg/cmd/util"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -382,6 +384,7 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 			Message: "Troubleshooting and Debugging Commands:",
 			Commands: []*cobra.Command{
 				cmdexec.NewCmdExec(f, ioStreams),
+				top.NewCmdTop(util.NewFactory(f), ioStreams),
 			},
 		},
 
