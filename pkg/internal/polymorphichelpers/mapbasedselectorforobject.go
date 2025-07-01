@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
+	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -157,6 +158,38 @@ func mapBasedSelectorForObject(object runtime.Object) (string, error) {
 			return "", fmt.Errorf("couldn't convert expressions - \"%+v\" to map-based selector format", t.Spec.Selector.MatchExpressions)
 		}
 		return MakeLabels(t.Spec.Selector.MatchLabels), nil
+
+	case *kruiseappsv1beta1.StatefulSet:
+		if t.Spec.Selector == nil || len(t.Spec.Selector.MatchLabels) == 0 {
+			return "", fmt.Errorf("invalid Advanced StatefulSet: no selectors, therefore cannot be exposed")
+		}
+		if len(t.Spec.Selector.MatchExpressions) > 0 {
+			return "", fmt.Errorf("couldn't convert expressions - \"%+v\" to map-based selector format", t.Spec.Selector.MatchExpressions)
+		}
+		return MakeLabels(t.Spec.Selector.MatchLabels), nil
+
+	case *kruiseappsv1alpha1.DaemonSet:
+		if t.Spec.Selector == nil || len(t.Spec.Selector.MatchLabels) == 0 {
+			return "", fmt.Errorf("invalid Advanced DaemonSet: no selectors, therefore cannot be exposed")
+		}
+		if len(t.Spec.Selector.MatchExpressions) > 0 {
+			return "", fmt.Errorf("couldn't convert expressions - \"%+v\" to map-based selector format", t.Spec.Selector.MatchExpressions)
+		}
+		return MakeLabels(t.Spec.Selector.MatchLabels), nil
+
+	case *kruiseappsv1alpha1.UnitedDeployment:
+		if t.Spec.Selector == nil || len(t.Spec.Selector.MatchLabels) == 0 {
+			return "", fmt.Errorf("invalid UnitedDeployment: no selectors, therefore cannot be exposed")
+		}
+		if len(t.Spec.Selector.MatchExpressions) > 0 {
+			return "", fmt.Errorf("couldn't convert expressions - \"%+v\" to map-based selector format", t.Spec.Selector.MatchExpressions)
+		}
+		return MakeLabels(t.Spec.Selector.MatchLabels), nil
+
+	case *kruiseappsv1alpha1.BroadcastJob:
+		// BroadcastJob does not have a top-level selector. It uses a template for pods.
+		// We can get the labels from the pod template spec.
+		return MakeLabels(t.Spec.Template.Labels), nil
 
 	default:
 		return "", fmt.Errorf("cannot extract pod selector from %T", object)

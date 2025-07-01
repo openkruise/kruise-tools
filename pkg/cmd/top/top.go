@@ -41,5 +41,10 @@ func NewCmdTop(f util.Factory, ioStreams genericclioptions.IOStreams) *cobra.Com
 	}
 
 	cmd.AddCommand(NewCmdTopCloneSet(f, ioStreams))
+	cmd.AddCommand(NewCmdTopAdvancedStatefulSet(f, ioStreams))
+	cmd.AddCommand(NewCmdTopAdvancedDaemonSet(f, ioStreams))
+	cmd.AddCommand(NewCmdTopUnitedDeployment(f, ioStreams))
+	cmd.AddCommand(NewCmdTopBroadcastJob(f, ioStreams))
+
 	return cmd
 }
