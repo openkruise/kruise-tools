@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
-	"github.com/openkruise/kruise-tools/pkg/cmd/util" // <-- Use local factory
+	"github.com/openkruise/kruise-tools/pkg/cmd/util"
 	"github.com/openkruise/kruise-tools/pkg/top"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,16 +29,14 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 )
 
-// TopCloneSetOptions holds the options for the top cloneset command
 type TopCloneSetOptions struct {
 	genericclioptions.IOStreams
 	CloneSetName string
 	Namespace    string
-	Factory      util.Factory // <-- Use local factory interface
+	Factory      util.Factory
 }
 
-// NewCmdTopCloneSet creates the `top cloneset` command.
-func NewCmdTopCloneSet(f util.Factory, ioStreams genericclioptions.IOStreams) *cobra.Command { // <-- Use local factory
+func NewCmdTopCloneSet(f util.Factory, ioStreams genericclioptions.IOStreams) *cobra.Command {
 	o := &TopCloneSetOptions{
 		IOStreams: ioStreams,
 		Factory:   f,
@@ -60,26 +58,21 @@ func NewCmdTopCloneSet(f util.Factory, ioStreams genericclioptions.IOStreams) *c
 	return cmd
 }
 
-// Complete completes all the required options.
 func (o *TopCloneSetOptions) Complete(cmd *cobra.Command, args []string) error {
 	o.CloneSetName = args[0]
 
-	// The namespace is resolved by the factory's builder, honoring the -n flag
 	var err error
 	o.Namespace, _, err = o.Factory.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
 	}
-	// If the user provided a namespace flag, it will be used by the builder later.
 	if cmd.Flags().Changed("namespace") {
 		o.Namespace, _ = cmd.Flags().GetString("namespace")
 	}
 	return nil
 }
 
-// Run executes the `top cloneset` command logic.
 func (o *TopCloneSetOptions) Run() error {
-	// 1. Get the CloneSet object from the server.
 	builder := o.Factory.NewBuilder()
 	result := builder.
 		NamespaceParam(o.Namespace).DefaultNamespace().
@@ -98,13 +91,11 @@ func (o *TopCloneSetOptions) Run() error {
 		return fmt.Errorf("unexpected object type: %T, expected *kruiseappsv1alpha1.CloneSet", infos[0].Object)
 	}
 
-	// 2. Get the pod selector for the CloneSet.
 	selector, err := metav1.LabelSelectorAsSelector(cloneSet.Spec.Selector)
 	if err != nil {
 		return fmt.Errorf("could not convert label selector for CloneSet %s: %v", cloneSet.Name, err)
 	}
 
-	// 3. Get the necessary API clients from our local factory.
 	kubeClient, err := o.Factory.KubernetesClientSet()
 	if err != nil {
 		return err
@@ -114,13 +105,11 @@ func (o *TopCloneSetOptions) Run() error {
 		return fmt.Errorf("error getting metrics client: %v. Is the metrics-server installed?", err)
 	}
 
-	// 4. Call the core logic to sum the metrics.
 	totalCPU, totalMemory, err := top.SumUsageForSelector(kubeClient, metricsClient, cloneSet.Namespace, selector)
 	if err != nil {
 		return err
 	}
 
-	// 5. Print the formatted output.
 	cpuString, memoryString := top.FormatResourceUsage(totalCPU, totalMemory)
 	fmt.Fprintf(o.Out, "%-20s\t%-12s\t%-15s\n", "NAME", "CPU(cores)", "MEMORY(bytes)")
 	fmt.Fprintf(o.Out, "%-20s\t%-12s\t%-15s\n", cloneSet.Name, cpuString, memoryString)

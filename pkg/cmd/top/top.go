@@ -17,7 +17,7 @@ limitations under the License.
 package top
 
 import (
-	"github.com/openkruise/kruise-tools/pkg/cmd/util" // <-- Use local factory
+	"github.com/openkruise/kruise-tools/pkg/cmd/util"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
@@ -32,8 +32,7 @@ var (
 		The top command allows you to see the resource consumption for OpenKruise workloads.`))
 )
 
-// NewCmdTop creates the new parent `top` command.
-func NewCmdTop(f util.Factory, ioStreams genericclioptions.IOStreams) *cobra.Command { // <-- Use local factory
+func NewCmdTop(f util.Factory, ioStreams genericclioptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "top",
 		Short: i18n.T("Display resource (CPU/Memory) usage"),
@@ -41,9 +40,6 @@ func NewCmdTop(f util.Factory, ioStreams genericclioptions.IOStreams) *cobra.Com
 		Run:   cmdutil.DefaultSubCommandRun(ioStreams.ErrOut),
 	}
 
-	// Add subcommands
 	cmd.AddCommand(NewCmdTopCloneSet(f, ioStreams))
-	// In future PRs, you will add other workloads here.
-
 	return cmd
 }

@@ -36,7 +36,7 @@ type Factory interface {
 	// KubernetesClientSet gives you back an external clientset
 	KubernetesClientSet() (*kubernetes.Clientset, error)
 
-	// MetricsClient gives you back a metrics clientset.
+	// MetricsClient gives you back a metrics clientset
 	MetricsClient() (metricsclientset.Interface, error)
 
 	// RESTClient Returns a RESTClient for accessing Kubernetes resources or an error.
