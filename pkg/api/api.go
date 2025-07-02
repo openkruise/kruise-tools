@@ -31,8 +31,10 @@ import (
 )
 
 var (
-	DeploymentKind = apps.SchemeGroupVersion.WithKind("Deployment")
-	CloneSetKind   = kruiseappsv1alpha1.SchemeGroupVersion.WithKind("CloneSet")
+	DeploymentKind          = apps.SchemeGroupVersion.WithKind("Deployment")
+	CloneSetKind            = kruiseappsv1alpha1.SchemeGroupVersion.WithKind("CloneSet")
+	StatefulSetKind         = apps.SchemeGroupVersion.WithKind("StatefulSet")
+	AdvancedStatefulSetKind = kruiseappsv1beta1.SchemeGroupVersion.WithKind("StatefulSet")
 )
 
 var Scheme = scheme.Scheme
@@ -82,6 +84,24 @@ func NewCloneSetRef(namespace, name string) ResourceRef {
 	return ResourceRef{
 		APIVersion: CloneSetKind.GroupVersion().String(),
 		Kind:       CloneSetKind.Kind,
+		Namespace:  namespace,
+		Name:       name,
+	}
+}
+
+func NewStatefulSetRef(namespace, name string) ResourceRef {
+	return ResourceRef{
+		APIVersion: StatefulSetKind.GroupVersion().String(),
+		Kind:       StatefulSetKind.Kind,
+		Namespace:  namespace,
+		Name:       name,
+	}
+}
+
+func NewAdvancedStatefulSetRef(namespace, name string) ResourceRef {
+	return ResourceRef{
+		APIVersion: AdvancedStatefulSetKind.GroupVersion().String(),
+		Kind:       AdvancedStatefulSetKind.Kind,
 		Namespace:  namespace,
 		Name:       name,
 	}
