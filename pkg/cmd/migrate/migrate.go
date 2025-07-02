@@ -121,7 +121,7 @@ func (o *migrateOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []
 	case "CloneSet", "cloneset", "clone":
 		o.To = "CloneSet"
 		o.DstRef = api.NewCloneSetRef(namespace, o.DstName)
-	case "AdvancedDaemonSet", "advdaemonset", "ads":
+	case "AdvancedDaemonSet", "advanceddaemonset", "ads":
 		o.To = "AdvancedDaemonSet"
 		o.DstRef = api.NewAdvancedDaemonSetRef(namespace, o.DstName)
 	default:

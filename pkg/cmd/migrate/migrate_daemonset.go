@@ -42,20 +42,16 @@ func (o *migrateOptions) migrateDaemonSet(f cmdutil.Factory, cmd *cobra.Command)
 		return err
 	}
 
-	opts := migration.Options{}
-	if o.MaxSurge >= 1 {
-		opts.MaxSurge = &o.MaxSurge
-	}
-	if o.TimeoutSeconds > 0 {
-		opts.TimeoutSeconds = &o.TimeoutSeconds
-	}
-
-	result, err := ctrl.Submit(o.SrcRef, o.DstRef, opts)
+	result, err := ctrl.Submit(o.SrcRef, o.DstRef, migration.Options{})
 	if err != nil {
 		return err
 	}
 
+	startTime := time.Now()
 	for {
+		if o.TimeoutSeconds > 0 && time.Since(startTime).Seconds() > float64(o.TimeoutSeconds) {
+			return fmt.Errorf("migration timed out after %d seconds", o.TimeoutSeconds)
+		}
 		time.Sleep(time.Second)
 		newResult, err := ctrl.Query(result.ID)
 		if err != nil {

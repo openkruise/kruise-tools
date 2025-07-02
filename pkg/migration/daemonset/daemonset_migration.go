@@ -35,7 +35,6 @@ type task struct {
 	ID       types.UID
 	start    time.Time
 	src, dst api.ResourceRef
-	opts     migration.Options
 	result   migration.Result
 	mu       sync.Mutex
 }
@@ -64,7 +63,7 @@ func NewControl(cfg *rest.Config, stopChan <-chan struct{}) (migration.Control, 
 }
 
 // Submit creates the ADS then orphan-deletes the native DS.
-func (c *control) Submit(src api.ResourceRef, dst api.ResourceRef, opts migration.Options) (migration.Result, error) {
+func (c *control) Submit(src api.ResourceRef, dst api.ResourceRef, _ migration.Options) (migration.Result, error) {
 	var ds appsv1.DaemonSet
 	if err := c.client.Get(context.Background(), src.GetNamespacedName(), &ds); err != nil {
 		return migration.Result{}, fmt.Errorf("get native DaemonSet: %w", err)
@@ -94,10 +93,10 @@ func (c *control) Submit(src api.ResourceRef, dst api.ResourceRef, opts migratio
 		return migration.Result{}, fmt.Errorf("orphan-delete DS: %w", err)
 	}
 
-	id := (uuid.NewUUID())
+	id := types.UID(uuid.NewUUID())
 	result := migration.Result{ID: id, State: migration.MigrateSucceeded}
 	c.mu.Lock()
-	c.tasks[id] = &task{ID: id, start: time.Now(), src: src, dst: dst, opts: opts, result: result}
+	c.tasks[id] = &task{ID: id, start: time.Now(), src: src, dst: dst, result: result}
 	c.mu.Unlock()
 	return result, nil
 }
