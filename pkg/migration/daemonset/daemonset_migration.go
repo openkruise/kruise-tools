@@ -93,7 +93,7 @@ func (c *control) Submit(src api.ResourceRef, dst api.ResourceRef, _ migration.O
 		return migration.Result{}, fmt.Errorf("orphan-delete DS: %w", err)
 	}
 
-	id := types.UID(uuid.NewUUID())
+	id := types.UID(uuid.NewUUID()) // nolint:unconvert
 	result := migration.Result{ID: id, State: migration.MigrateSucceeded}
 	c.mu.Lock()
 	c.tasks[id] = &task{ID: id, start: time.Now(), src: src, dst: dst, result: result}
