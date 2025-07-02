@@ -60,7 +60,6 @@ func (c *control) Create(srcRef, dstRef api.ResourceRef, opts Options) error {
 			Template:             ss.Spec.Template,
 			VolumeClaimTemplates: ss.Spec.VolumeClaimTemplates,
 			UpdateStrategy: kruiseappsv1beta1.StatefulSetUpdateStrategy{
-				Type:          kruiseappsv1beta1.StatefulSetUpdateStrategyType(ss.Spec.UpdateStrategy.Type),
 				RollingUpdate: ru,
 			},
 			PodManagementPolicy:  ss.Spec.PodManagementPolicy,

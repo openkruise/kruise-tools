@@ -90,7 +90,6 @@ func (c *control) Submit(src api.ResourceRef, dst api.ResourceRef, _ migration.O
 			Template:             ss.Spec.Template,
 			VolumeClaimTemplates: ss.Spec.VolumeClaimTemplates,
 			UpdateStrategy: kruiseappsv1beta1.StatefulSetUpdateStrategy{
-				Type:          kruiseappsv1beta1.StatefulSetUpdateStrategyType(ss.Spec.UpdateStrategy.Type),
 				RollingUpdate: ru,
 			},
 			PodManagementPolicy:  ss.Spec.PodManagementPolicy,
