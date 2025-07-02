@@ -68,6 +68,14 @@ func (c *control) Submit(src api.ResourceRef, dst api.ResourceRef, _ migration.O
 		return migration.Result{}, fmt.Errorf("get native StatefulSet: %w", err)
 	}
 
+	// convert native apps/v1 -> kruise/apps/v1beta1 update strategy
+	var ru *kruiseappsv1beta1.RollingUpdateStatefulSetStrategy
+	if ss.Spec.UpdateStrategy.RollingUpdate != nil {
+		ru = &kruiseappsv1beta1.RollingUpdateStatefulSetStrategy{
+			Partition: ss.Spec.UpdateStrategy.RollingUpdate.Partition,
+		}
+	}
+
 	// build AdvancedStatefulSet object including all crucial fields
 	ass := &kruiseappsv1beta1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -81,7 +89,10 @@ func (c *control) Submit(src api.ResourceRef, dst api.ResourceRef, _ migration.O
 			Selector:             ss.Spec.Selector,
 			Template:             ss.Spec.Template,
 			VolumeClaimTemplates: ss.Spec.VolumeClaimTemplates,
-			UpdateStrategy:       ss.Spec.UpdateStrategy,
+			UpdateStrategy: kruiseappsv1beta1.StatefulSetUpdateStrategy{
+				Type:          kruiseappsv1beta1.StatefulSetUpdateStrategyType(ss.Spec.UpdateStrategy.Type),
+				RollingUpdate: ru,
+			},
 			PodManagementPolicy:  ss.Spec.PodManagementPolicy,
 			RevisionHistoryLimit: ss.Spec.RevisionHistoryLimit,
 		},

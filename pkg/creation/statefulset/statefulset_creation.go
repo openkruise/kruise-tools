@@ -40,6 +40,14 @@ func (c *control) Create(srcRef, dstRef api.ResourceRef, opts Options) error {
 		return err
 	}
 
+	// convert native apps/v1 -> kruise/apps/v1beta1 update strategy
+	var ru *kruiseappsv1beta1.RollingUpdateStatefulSetStrategy
+	if ss.Spec.UpdateStrategy.RollingUpdate != nil {
+		ru = &kruiseappsv1beta1.RollingUpdateStatefulSetStrategy{
+			Partition: ss.Spec.UpdateStrategy.RollingUpdate.Partition,
+		}
+	}
+
 	ass := &kruiseappsv1beta1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      dstRef.Name,
@@ -51,7 +59,10 @@ func (c *control) Create(srcRef, dstRef api.ResourceRef, opts Options) error {
 			Selector:             ss.Spec.Selector,
 			Template:             ss.Spec.Template,
 			VolumeClaimTemplates: ss.Spec.VolumeClaimTemplates,
-			UpdateStrategy:       ss.Spec.UpdateStrategy,
+			UpdateStrategy: kruiseappsv1beta1.StatefulSetUpdateStrategy{
+				Type:          kruiseappsv1beta1.StatefulSetUpdateStrategyType(ss.Spec.UpdateStrategy.Type),
+				RollingUpdate: ru,
+			},
 			PodManagementPolicy:  ss.Spec.PodManagementPolicy,
 			RevisionHistoryLimit: ss.Spec.RevisionHistoryLimit,
 		},
