@@ -28,6 +28,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubectl/pkg/util/openapi"
+	"k8s.io/kubectl/pkg/validation"
+	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 type factoryImpl struct {
@@ -52,6 +55,27 @@ func (f *factoryImpl) KubernetesClientSet() (*kubernetes.Clientset, error) {
 		return nil, err
 	}
 	return kubernetes.NewForConfig(clientConfig)
+}
+
+func (f *factoryImpl) MetricsClient() (metricsclientset.Interface, error) {
+	clientConfig, err := f.ToRESTConfig()
+	if err != nil {
+		return nil, err
+	}
+	return metricsclientset.NewForConfig(clientConfig)
+}
+
+func (f *factoryImpl) OpenAPIGetter() discovery.OpenAPISchemaInterface {
+	disco, _ := f.clientGetter.ToDiscoveryClient()
+	return openapi.NewOpenAPIGetter(disco)
+}
+
+func (f *factoryImpl) OpenAPISchema() (openapi.Resources, error) {
+	return nil, nil
+}
+
+func (f *factoryImpl) Validator(validate bool) (validation.Schema, error) {
+	return nil, nil
 }
 
 func (f *factoryImpl) DynamicClient() (dynamic.Interface, error) {
