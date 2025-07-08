@@ -6,7 +6,6 @@ on:
       - created
 
 env:
-  # Common versions
   GO_VERSION: '1.22'
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -15,101 +14,137 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        TARGETS: [ linux/amd64, darwin/amd64, windows/amd64, linux/arm64, darwin/arm64 ]
+        include:
+          - os: linux
+            arch: amd64
+          - os: linux
+            arch: arm64
+          - os: darwin
+            arch: amd64
+          - os: darwin
+            arch: arm64
+          - os: windows
+            arch: amd64
     env:
       GO_BUILD_ENV: GO111MODULE=on CGO_ENABLED=0
-      DIST_DIRS: find * -type d -exec
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0  # Needed for version.sh to work properly
+          
       - name: Setup Go
         uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
         with:
           go-version: ${{ env.GO_VERSION }}
-      - name: Get release
-        id: get_release
-        uses: bruceadams/get-release@v1.2.2
-      - name: Get matrix
-        id: get_matrix
-        run: |
-          TARGETS=${{matrix.TARGETS}}
-          echo ::set-output name=OS::${TARGETS%/*}
-          echo ::set-output name=ARCH::${TARGETS#*/}
+          cache: true  # Enable built-in Go caching
+          
       - name: Get ldflags
         id: get_ldflags
         run: |
           LDFLAGS=$(./version.sh)
-          echo "LDFLAGS=${LDFLAGS}" >> $GITHUB_ENV
-      - name: Build
+          echo "LDFLAGS=${LDFLAGS}" >> $GITHUB_OUTPUT
+          
+      - name: Build kubectl-kruise
         run: |
-          ${{ env.GO_BUILD_ENV }} GOOS=${{ steps.get_matrix.outputs.OS }} GOARCH=${{ steps.get_matrix.outputs.ARCH }} \
-            go build -ldflags "${{ env.LDFLAGS }}" \
-            -o _bin/kubectl-kruise/${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}/kubectl-kruise -v \
+          ${{ env.GO_BUILD_ENV }} GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} \
+            go build -ldflags "${{ steps.get_ldflags.outputs.LDFLAGS }}" \
+            -o _bin/kubectl-kruise/${{ matrix.os }}-${{ matrix.arch }}/kubectl-kruise${{ matrix.os == 'windows' && '.exe' || '' }} \
             ./cmd/plugin/main.go
-      - name: Compress
-        run: |
-          cd _bin/kubectl-kruise && \
-          ${{ env.DIST_DIRS }} cp ../../LICENSE {} \; && \
-          ${{ env.DIST_DIRS }} cp ../../README.md {} \; && \
-          ${{ env.DIST_DIRS }} tar -zcf kubectl-kruise-{}.tar.gz {} \; && \
-          cd .. && \
-          sha256sum kubectl-kruise/kubectl-kruise-* >> sha256-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.txt \
-      - name: Upload Kubectl-kruise tar.gz
-        uses: actions/upload-release-asset@v1.0.2
-        with:
-          upload_url: ${{ steps.get_release.outputs.upload_url }}
-          asset_path: ./_bin/kubectl-kruise/kubectl-kruise-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.tar.gz
-          asset_name: kubectl-kruise-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}-${{ steps.get_release.outputs.tag_name }}.tar.gz
-          asset_content_type: binary/octet-stream
+            
       - name: Build resourcedistribution-generator
         run: |
-          ${{ env.GO_BUILD_ENV }} GOOS=${{ steps.get_matrix.outputs.OS }} GOARCH=${{ steps.get_matrix.outputs.ARCH }} \
-            go build -ldflags "${{ env.LDFLAGS }}" \
-            -o _bin/resourcedistribution-generator/${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}/resourcedistributiongenerator -v \
+          ${{ env.GO_BUILD_ENV }} GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} \
+            go build -ldflags "${{ steps.get_ldflags.outputs.LDFLAGS }}" \
+            -o _bin/resourcedistribution-generator/${{ matrix.os }}-${{ matrix.arch }}/resourcedistributiongenerator${{ matrix.os == 'windows' && '.exe' || '' }} \
             ./cmd/resourcedistributiongenerator/main.go
-      - name: Compress resourcedistribution-generator
+            
+      - name: Package artifacts
         run: |
-          cd _bin/resourcedistribution-generator && \
-          ${{ env.DIST_DIRS }} tar -zcf resourcedistribution-generator-{}.tar.gz {} \; && \
-          cd .. && \
-          sha256sum resourcedistribution-generator/resourcedistribution-generator-* >> sha256-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.txt \
-      - name: Upload resourcedistribution-generator tar.gz
-        uses: actions/upload-release-asset@v1.0.2
+          # Package kubectl-kruise
+          cd _bin/kubectl-kruise/${{ matrix.os }}-${{ matrix.arch }}
+          cp ../../../LICENSE .
+          cp ../../../README.md .
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            zip -r kubectl-kruise-${{ matrix.os }}-${{ matrix.arch }}.zip .
+          else
+            tar -czf kubectl-kruise-${{ matrix.os }}-${{ matrix.arch }}.tar.gz .
+          fi
+          cd ../../..
+          
+          # Package resourcedistribution-generator
+          cd _bin/resourcedistribution-generator/${{ matrix.os }}-${{ matrix.arch }}
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            zip -r resourcedistribution-generator-${{ matrix.os }}-${{ matrix.arch }}.zip .
+          else
+            tar -czf resourcedistribution-generator-${{ matrix.os }}-${{ matrix.arch }}.tar.gz .
+          fi
+          cd ../../..
+          
+      - name: Generate checksums
+        run: |
+          cd _bin
+          find . -name "*.tar.gz" -o -name "*.zip" | xargs sha256sum > sha256-${{ matrix.os }}-${{ matrix.arch }}.txt
+          
+      - name: Upload checksums artifact
+        uses: actions/upload-artifact@v4.4.3
         with:
-          upload_url: ${{ steps.get_release.outputs.upload_url }}
-          asset_path: ./_bin/resourcedistribution-generator/resourcedistribution-generator-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.tar.gz
-          asset_name: resourcedistribution-generator-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}-${{ steps.get_release.outputs.tag_name }}.tar.gz
-          asset_content_type: binary/octet-stream
-      - name: Post sha256
-        uses: actions/upload-artifact@v4
-        with:
-          name: sha256sums-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}
-          path: ./_bin/sha256-${{ steps.get_matrix.outputs.OS }}-${{ steps.get_matrix.outputs.ARCH }}.txt
+          name: sha256sums-${{ matrix.os }}-${{ matrix.arch }}
+          path: _bin/sha256-${{ matrix.os }}-${{ matrix.arch }}.txt
           retention-days: 1
-  upload-sha256sums:
+          
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4.4.3
+        with:
+          name: binaries-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            _bin/kubectl-kruise/${{ matrix.os }}-${{ matrix.arch }}/*.tar.gz
+            _bin/kubectl-kruise/${{ matrix.os }}-${{ matrix.arch }}/*.zip
+            _bin/resourcedistribution-generator/${{ matrix.os }}-${{ matrix.arch }}/*.tar.gz
+            _bin/resourcedistribution-generator/${{ matrix.os }}-${{ matrix.arch }}/*.zip
+          retention-days: 1
+
+  upload-release-assets:
     needs: build_and_upload
     runs-on: ubuntu-latest
-    name: upload-sha256sums
+    permissions:
+      contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-      - name: Get release
-        id: get_release
-        uses: bruceadams/get-release@v1.2.2
-      - name: Download artifacts
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        
+      - name: Download all artifacts
         uses: actions/download-artifact@v4.1.7
         with:
-          pattern: sha256sums-*
+          pattern: "*"
           merge-multiple: true
-          path: sha256sums
-      - shell: bash
+          path: artifacts
+          
+      - name: Prepare release assets
         run: |
-          cat sha256sums/*.txt > sha256sums.txt
-      - name: Upload Checksums
-        uses: actions/upload-release-asset@v1.0.2
+          mkdir -p release-assets
+          
+          # Move binary archives to release assets
+          find artifacts -name "*.tar.gz" -o -name "*.zip" | while read file; do
+            filename=$(basename "$file")
+            # Add version tag to filename
+            name_part="${filename%.*}"
+            ext="${filename##*.}"
+            if [[ "$filename" == *.tar.gz ]]; then
+              ext="tar.gz"
+              name_part="${filename%.tar.gz}"
+            fi
+            cp "$file" "release-assets/${name_part}-${GITHUB_REF_NAME}.${ext}"
+          done
+          
+          # Combine all checksums
+          cat artifacts/sha256-*.txt > release-assets/sha256sums-${GITHUB_REF_NAME}.txt
+          
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2.0.8
         with:
-          upload_url: ${{ steps.get_release.outputs.upload_url }}
-          asset_path: sha256sums.txt
-          asset_name: sha256sums-${{ steps.get_release.outputs.tag_name }}.txt
-          asset_content_type: text/plain
+          files: release-assets/*
+          fail_on_unmatched_files: true
+          
       - name: Update kubectl plugin version in krew-index
-        uses: rajatjindal/krew-release-bot@v0.0.43
+        uses: rajatjindal/krew-release-bot@v0.0.46
