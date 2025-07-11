@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// mockObject is a simple struct that implements runtime.Object for testing unknown types.
 type mockObject struct{}
 
 func (m *mockObject) GetObjectKind() schema.ObjectKind { return schema.EmptyObjectKind }
