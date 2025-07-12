@@ -73,15 +73,9 @@ func newNameListRNode(values ...string) *yaml.RNode {
 	matchSeq := &yaml.Node{Kind: yaml.SequenceNode}
 	for _, v := range values {
 		node := &yaml.Node{
-			Kind: yaml.MappingNode,
-		}
-		node.Content = append(node.Content, &yaml.Node{
-			Kind:  yaml.ScalarNode,
-			Value: nameField,
-		}, &yaml.Node{
 			Kind:  yaml.ScalarNode,
 			Value: v,
-		})
+		}
 		matchSeq.Content = append(matchSeq.Content, node)
 
 	}

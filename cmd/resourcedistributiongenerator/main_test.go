@@ -128,10 +128,10 @@ spec:
     allNamespaces: true
     excludedNamespaces:
       list:
-      - name: ns-2
+      - ns-2
     includedNamespaces:
       list:
-      - name: ns-1
+      - ns-1
     namespaceLabelSelector:
       matchExpressions:
       - key: abc
@@ -191,7 +191,7 @@ spec:
   targets:
     includedNamespaces:
       list:
-      - name: ns-1
+      - ns-1
 metadata:
   name: rdname
 `,
@@ -231,7 +231,7 @@ spec:
   targets:
     includedNamespaces:
       list:
-      - name: ns-1
+      - ns-1
 metadata:
   name: rdname
 `,
@@ -537,7 +537,7 @@ spec:
     allNamespaces: true
     includedNamespaces:
       list:
-      - name: ns-1
+      - ns-1
     namespaceLabelSelector:
       matchExpressions:
       - key: exc
@@ -619,8 +619,8 @@ spec:
     allNamespaces: true
     excludedNamespaces:
       list:
-      - name: ns-2
-      - name: ns-3
+      - ns-2
+      - ns-3
 metadata:
   name: rdname
 `,
@@ -667,7 +667,7 @@ spec:
     allNamespaces: true
     includedNamespaces:
       list:
-      - name: ns-1
+      - ns-1
 metadata:
   annotations:
     an: rdan
