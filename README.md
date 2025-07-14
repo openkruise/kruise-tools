@@ -199,5 +199,61 @@ kubectl kruise migrate CloneSet --from Deployment --src-name deployment-demo --d
    * [ ] kubectl kruise autoscale 
 
 
+## Security
+
+This project includes automated vulnerability scanning to ensure the security of dependencies.
+
+### Vulnerability Scanning
+
+We use two complementary tools to scan for vulnerabilities in our Go dependencies:
+
+1. **Nancy by Sonatype** - Comprehensive dependency scanning against the Sonatype OSS Index
+2. **govulncheck** - Official Go vulnerability scanner with call graph analysis to reduce false positives
+
+### CI/CD Security Integration
+
+Security scans are automatically run:
+- On every push to `master` and `release*` branches
+- On every pull request
+- Daily at 2 AM UTC via scheduled workflow
+
+### Handling Vulnerabilities
+
+If vulnerabilities are found:
+
+1. **Review the vulnerability report** - Check if the vulnerability affects your usage
+2. **Update dependencies** - Upgrade to a non-vulnerable version if available
+3. **Apply workarounds** - If no update is available, consider alternative approaches
+4. **Temporary exclusions** - For false positives or accepted risks, add the CVE ID to `.nancy-ignore`
+
+#### Excluding Vulnerabilities
+
+To exclude specific vulnerabilities from Nancy scans, add the CVE ID or OSS Index ID to the `.nancy-ignore` file:
+
+```
+# Example: Exclude a specific CVE
+CVE-2021-12345
+
+# Example: Exclude by OSS Index ID
+9eb9a5bc-8310-4104-bf85-3a820d28ba79
+```
+
+### Running Security Scans Locally
+
+To run vulnerability scans locally:
+
+```bash
+# Install tools
+go install github.com/sonatype-nexus-community/nancy@latest
+go install golang.org/x/vuln/cmd/govulncheck@latest
+
+# Run Nancy scan
+go list -json -deps ./... > go.list
+nancy sleuth --loud
+
+# Run govulncheck
+govulncheck ./...
+```
+
 ### Contributing
-We encourage you to help out by reporting issues, improving documentation, fixing bugs, or adding new features. 
+We encourage you to help out by reporting issues, improving documentation, fixing bugs, or adding new features.
