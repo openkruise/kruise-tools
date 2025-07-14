@@ -256,4 +256,4 @@ govulncheck ./...
 ```
 
 ### Contributing
-We encourage you to help out by reporting issues, improving documentation, fixing bugs, or adding new features.
+We encourage you to help out by reporting issues, improving documentation, fixing bugs, or adding new features. 
