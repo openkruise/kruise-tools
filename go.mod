@@ -1,8 +1,8 @@
 module github.com/openkruise/kruise-tools
 
-go 1.22.0
+go 1.23.0
 
-toolchain go1.22.4
+toolchain go1.23.4
 
 require (
 	github.com/go-errors/errors v1.4.2
