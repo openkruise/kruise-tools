@@ -114,7 +114,7 @@ jobs:
       - name: Run Nancy vulnerability scan
         uses: sonatype-nexus-community/nancy-github-action@main
         with:
-          nancyCommand: sleuth
+          nancyCommand: sleuth -x .nancy-ignore
           goListFile: go.list
 
       - name: Install and run govulncheck
