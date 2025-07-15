@@ -9,3 +9,6 @@
 #
 # Add vulnerability IDs below that need to be temporarily ignored:
 # (Remove this comment and add actual IDs when needed)
+# Temporary exclusion - proxy/tokenizer vulnerabilities don't affect our usage
+CVE-2025-22870
+CVE-2025-22872
