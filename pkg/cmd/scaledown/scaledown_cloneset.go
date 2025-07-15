@@ -44,11 +44,11 @@ func (o *ScaleDownOptions) ScaleDownCloneSet(info *resource.Info) error {
 		NewHelper(info.Client, info.Mapping).
 		Replace(info.Namespace, info.Name, true, res)
 	if err != nil {
-		fmt.Fprintf(o.Out, "%s delete pods %s failed\n", cloneSetName, podsSlc)
+		fmt.Fprintf(o.IOStreams.Out, "%s delete pods %s failed\n", cloneSetName, podsSlc)
 		return fmt.Errorf("scaledown cloneset %s failed, error is %v", res.Name, err)
 	}
 
-	fmt.Fprintf(o.Out, "# %s delete pods %s successfully\n", cloneSetName, podsSlc)
+	fmt.Fprintf(o.IOStreams.Out, "# %s delete pods %s successfully\n", cloneSetName, podsSlc)
 	if err := o.PrintObj(res, o.Out); err != nil {
 		return errors.New(err.Error())
 	}

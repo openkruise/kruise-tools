@@ -202,7 +202,7 @@ func (o *CreateOptions) Complete(f cmdutil.Factory, cmd *cobra.Command) error {
 	}
 
 	o.PrintObj = func(obj kruntime.Object) error {
-		return printer.PrintObj(obj, o.Out)
+		return printer.PrintObj(obj, o.IOStreams.Out)
 	}
 
 	return nil

@@ -180,7 +180,7 @@ func (o *CreateCRROptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args 
 		return err
 	}
 	o.PrintObj = func(obj runtime.Object) error {
-		return printer.PrintObj(obj, o.Out)
+		return printer.PrintObj(obj, o.IOStreams.Out)
 	}
 
 	return nil

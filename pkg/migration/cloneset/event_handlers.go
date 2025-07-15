@@ -42,8 +42,8 @@ func (ch *cloneSetHandler) OnAdd(obj interface{}, isInInitialList bool) {
 		Name:       d.Name,
 	}
 
-	ch.ctrl.RLock()
-	defer ch.ctrl.RUnlock()
+	ch.ctrl.RWMutex.RLock()
+	defer ch.ctrl.RWMutex.RUnlock()
 	if task, ok := ch.ctrl.executingTasks[ref]; ok {
 		ch.ctrl.queue.Add(task.ID)
 	}
@@ -62,8 +62,8 @@ func (ch *cloneSetHandler) OnUpdate(oldObj interface{}, newObj interface{}) {
 		Name:       d.Name,
 	}
 
-	ch.ctrl.RLock()
-	defer ch.ctrl.RUnlock()
+	ch.ctrl.RWMutex.RLock()
+	defer ch.ctrl.RWMutex.RUnlock()
 	if task, ok := ch.ctrl.executingTasks[ref]; ok {
 		ch.ctrl.queue.Add(task.ID)
 	}
@@ -81,8 +81,8 @@ func (ch *cloneSetHandler) OnDelete(obj interface{}) {
 		Name:       d.Name,
 	}
 
-	ch.ctrl.RLock()
-	defer ch.ctrl.RUnlock()
+	ch.ctrl.RWMutex.RLock()
+	defer ch.ctrl.RWMutex.RUnlock()
 	if task, ok := ch.ctrl.executingTasks[ref]; ok {
 		ch.ctrl.queue.Add(task.ID)
 	}
@@ -106,8 +106,8 @@ func (dh *deploymentHandler) OnAdd(obj interface{}, isInInitialList bool) {
 		Name:       d.Name,
 	}
 
-	dh.ctrl.RLock()
-	defer dh.ctrl.RUnlock()
+	dh.ctrl.RWMutex.RLock()
+	defer dh.ctrl.RWMutex.RUnlock()
 	if task, ok := dh.ctrl.executingTasks[ref]; ok {
 		dh.ctrl.queue.Add(task.ID)
 	}
@@ -126,8 +126,8 @@ func (dh *deploymentHandler) OnUpdate(oldObj interface{}, newObj interface{}) {
 		Name:       d.Name,
 	}
 
-	dh.ctrl.RLock()
-	defer dh.ctrl.RUnlock()
+	dh.ctrl.RWMutex.RLock()
+	defer dh.ctrl.RWMutex.RUnlock()
 	if task, ok := dh.ctrl.executingTasks[ref]; ok {
 		dh.ctrl.queue.Add(task.ID)
 	}
@@ -145,8 +145,8 @@ func (dh *deploymentHandler) OnDelete(obj interface{}) {
 		Name:       d.Name,
 	}
 
-	dh.ctrl.RLock()
-	defer dh.ctrl.RUnlock()
+	dh.ctrl.RWMutex.RLock()
+	defer dh.ctrl.RWMutex.RUnlock()
 	if task, ok := dh.ctrl.executingTasks[ref]; ok {
 		dh.ctrl.queue.Add(task.ID)
 	}

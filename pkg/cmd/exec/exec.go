@@ -169,10 +169,10 @@ func (p *ExecOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, argsIn []s
 	if argsLenAtDash > -1 {
 		p.Command = argsIn[argsLenAtDash:]
 	} else if len(argsIn) > 1 {
-		fmt.Fprint(p.ErrOut, "kubectl exec [POD] [COMMAND] is DEPRECATED and will be removed in a future version. Use kubectl exec [POD] -- [COMMAND] instead.\n")
+		fmt.Fprint(p.StreamOptions.IOStreams.ErrOut, "kubectl exec [POD] [COMMAND] is DEPRECATED and will be removed in a future version. Use kubectl exec [POD] -- [COMMAND] instead.\n")
 		p.Command = argsIn[1:]
 	} else if len(argsIn) > 0 && len(p.FilenameOptions.Filenames) != 0 {
-		fmt.Fprint(p.ErrOut, "kubectl exec [POD] [COMMAND] is DEPRECATED and will be removed in a future version. Use kubectl exec [POD] -- [COMMAND] instead.\n")
+		fmt.Fprint(p.StreamOptions.IOStreams.ErrOut, "kubectl exec [POD] [COMMAND] is DEPRECATED and will be removed in a future version. Use kubectl exec [POD] -- [COMMAND] instead.\n")
 		p.Command = argsIn[0:]
 		p.ResourceName = ""
 	}
@@ -223,7 +223,7 @@ func (p *ExecOptions) Validate() error {
 	if len(p.Command) == 0 {
 		return fmt.Errorf("you must specify at least one command for the container")
 	}
-	if p.Out == nil || p.ErrOut == nil {
+	if p.StreamOptions.IOStreams.Out == nil || p.StreamOptions.IOStreams.ErrOut == nil {
 		return fmt.Errorf("both output and error output must be provided")
 	}
 	return nil
@@ -232,17 +232,17 @@ func (p *ExecOptions) Validate() error {
 func (o *StreamOptions) SetupTTY() term.TTY {
 	t := term.TTY{
 		Parent: o.InterruptParent,
-		Out:    o.Out,
+		Out:    o.IOStreams.Out,
 	}
 
 	if !o.Stdin {
 		// need to nil out o.In to make sure we don't create a stream for stdin
-		o.In = nil
+		o.IOStreams.In = nil
 		o.TTY = false
 		return t
 	}
 
-	t.In = o.In
+	t.In = o.IOStreams.In
 	if !o.TTY {
 		return t
 	}
@@ -255,14 +255,14 @@ func (o *StreamOptions) SetupTTY() term.TTY {
 	if !o.isTerminalIn(t) {
 		o.TTY = false
 
-		if o.ErrOut != nil {
-			fmt.Fprintln(o.ErrOut, "Unable to use a TTY - input is not a terminal or the right kind of file")
+		if o.IOStreams.ErrOut != nil {
+			fmt.Fprintln(o.IOStreams.ErrOut, "Unable to use a TTY - input is not a terminal or the right kind of file")
 		}
 
 		return t
 	}
 
-	// if we get to here, the user wants to attach stdin, wants a TTY, and o.In is a terminal, so we
+	// if we get to here, the user wants to attach stdin, wants a TTY, and o.IOStreams.In is a terminal, so we
 	// can safely set t.Raw to true
 	t.Raw = true
 
@@ -271,10 +271,10 @@ func (o *StreamOptions) SetupTTY() term.TTY {
 		o.overrideStreams = dockerterm.StdStreams
 	}
 	stdin, stdout, _ := o.overrideStreams()
-	o.In = stdin
+	o.IOStreams.In = stdin
 	t.In = stdin
-	if o.Out != nil {
-		o.Out = stdout
+	if o.IOStreams.Out != nil {
+		o.IOStreams.Out = stdout
 		t.Out = stdout
 	}
 

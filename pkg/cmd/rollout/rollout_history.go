@@ -65,6 +65,7 @@ type RolloutHistoryOptions struct {
 	RESTClientGetter genericclioptions.RESTClientGetter
 
 	Filenames []string
+	Kustomize string
 	Out       io.Writer
 
 	resource.FilenameOptions
@@ -163,8 +164,7 @@ func (o *RolloutHistoryOptions) Run() error {
 			return err
 		}
 
-		mapping := info.ResourceMapping()
-		historyViewer, err := o.HistoryViewer(o.RESTClientGetter, mapping)
+		historyViewer, err := o.HistoryViewer(o.RESTClientGetter, info.ResourceMapping())
 		if err != nil {
 			return err
 		}

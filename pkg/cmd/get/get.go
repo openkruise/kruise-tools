@@ -142,13 +142,13 @@ func (o *GetOptions) Run() error {
 
 			if len(infos) > 0 {
 				// Print resource type header and table header only if there are resources
-				fmt.Fprintf(o.Out, "\n%s:\n", resourceType)
+				fmt.Fprintf(o.IOStreams.Out, "\n%s:\n", resourceType)
 				switch resourceType {
 				case "clonesets.apps.kruise.io":
-					fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-14s\t%-18s\t%-8s\t%-8s\t%-s\n",
+					fmt.Fprintf(o.IOStreams.Out, "%-12s\t%-8s\t%-8s\t%-14s\t%-18s\t%-8s\t%-8s\t%-s\n",
 						"NAME", "DESIRED", "UPDATED", "UPDATED_READY", "UPDATED_AVAILABLE", "READY", "TOTAL", "AGE")
 				case "statefulsets.apps.kruise.io":
-					fmt.Fprintf(o.Out, "%-12s\t%-8s\t%-8s\t%-8s\t%-8s\t%-s\n",
+					fmt.Fprintf(o.IOStreams.Out, "%-12s\t%-8s\t%-8s\t%-8s\t%-8s\t%-s\n",
 						"NAME", "DESIRED", "CURRENT", "UPDATED", "READY", "AGE")
 				case "daemonsets.apps.kruise.io":
 					fmt.Fprintf(o.Out, "%-8s\t%-8s\t%-8s\t%-8s\t%-8s\t%-8s\t%-8s\t%-s\n",

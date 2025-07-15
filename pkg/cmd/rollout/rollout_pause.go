@@ -49,6 +49,7 @@ type PauseOptions struct {
 	Resources        []string
 
 	Filenames []string
+	Kustomize string
 	Out       io.Writer
 
 	resource.FilenameOptions

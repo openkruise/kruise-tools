@@ -370,7 +370,7 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 	ioStreams := genericclioptions.IOStreams{In: in, Out: out, ErrOut: err}
 
 	groups := templates.CommandGroups{
-		{
+		templates.CommandGroup{
 			Message: "Basic Commands:",
 			Commands: []*cobra.Command{
 				create.NewCmdCreate(f, ioStreams),
@@ -378,14 +378,14 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 				cmdWithShortOverwrite(scale.NewCmdScale(f, ioStreams), "Set a new size for a Deployment, ReplicaSet, CloneSet, or Advanced StatefulSet"),
 			},
 		},
-		{
+		templates.CommandGroup{
 			Message: "Troubleshooting and Debugging Commands:",
 			Commands: []*cobra.Command{
 				cmdexec.NewCmdExec(f, ioStreams),
 			},
 		},
 
-		{
+		templates.CommandGroup{
 			Message: "CloneSet Commands:",
 			Commands: []*cobra.Command{
 				krollout.NewCmdRollout(f, ioStreams),
@@ -393,20 +393,20 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 				migrate.NewCmdMigrate(f, ioStreams),
 			},
 		},
-		{
+		templates.CommandGroup{
 			Message: "AdvancedStatefulSet Commands:",
 			Commands: []*cobra.Command{
 				krollout.NewCmdRollout(f, ioStreams),
 				kset.NewCmdSet(f, ioStreams),
 			},
 		},
-		{
+		templates.CommandGroup{
 			Message: "Scaledown Commands",
 			Commands: []*cobra.Command{
 				scaledown.NewCmdScaleDown(f, ioStreams),
 			},
 		},
-		{
+		templates.CommandGroup{
 			Message: "Advanced Commands:",
 			Commands: []*cobra.Command{
 				diff.NewCmdDiff(f, ioStreams),

@@ -57,6 +57,7 @@ type UndoOptions struct {
 	Fast bool // fast rollback for blue-green
 
 	Filenames []string
+	Kustomize string
 	Out       io.Writer
 
 	resource.FilenameOptions

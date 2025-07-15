@@ -149,7 +149,7 @@ func (o *CreateBroadcastJobOptions) Complete(f cmdutil.Factory, cmd *cobra.Comma
 		return err
 	}
 	o.PrintObj = func(obj runtime.Object) error {
-		return printer.PrintObj(obj, o.Out)
+		return printer.PrintObj(obj, o.IOStreams.Out)
 	}
 
 	return nil

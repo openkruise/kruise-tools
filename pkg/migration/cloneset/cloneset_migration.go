@@ -151,8 +151,8 @@ func (c *control) Submit(src api.ResourceRef, dst api.ResourceRef, opts migratio
 		return migration.Result{}, fmt.Errorf("maxSurge must be integar more than zore")
 	}
 
-	c.Lock()
-	defer c.Unlock()
+	c.RWMutex.Lock()
+	defer c.RWMutex.Unlock()
 	if _, ok := c.executingTasks[src]; ok {
 		return migration.Result{}, fmt.Errorf("already existing migration task for %v", src)
 	} else if _, ok := c.executingTasks[dst]; ok {
@@ -310,8 +310,8 @@ func (c *control) reconcile(ID types.UID) error {
 }
 
 func (c *control) getTask(ID types.UID) *task {
-	c.RLock()
-	defer c.RUnlock()
+	c.RWMutex.RLock()
+	defer c.RWMutex.RUnlock()
 	return c.tasks[ID]
 }
 
@@ -330,8 +330,8 @@ func (c *control) finishTask(t *task, state migration.MigrateState, message stri
 		t.result.Message = message
 	}()
 
-	c.Lock()
-	defer c.Unlock()
+	c.RWMutex.Lock()
+	defer c.RWMutex.Unlock()
 	delete(c.executingTasks, t.src)
 	delete(c.executingTasks, t.dst)
 }

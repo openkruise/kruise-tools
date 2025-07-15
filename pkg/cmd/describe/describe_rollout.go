@@ -284,7 +284,7 @@ func (o *DescribeRolloutOptions) watchRolloutUpdates(ctx context.Context, watche
 }
 
 func (o *DescribeRolloutOptions) clearScreen() {
-	fmt.Fprint(o.Out, "\033[2J\033[H")
+	fmt.Fprint(o.IOStreams.Out, "\033[2J\033[H")
 }
 
 type RolloutWorkloadRef struct {
@@ -514,24 +514,24 @@ func (o *DescribeRolloutOptions) printTrafficRouting(trafficRouting []rolloutsap
 		return
 	}
 
-	fmt.Fprint(o.Out, "Traffic Routings:\n")
+	fmt.Fprint(o.IOStreams.Out, "Traffic Routings:\n")
 	for _, trafficRouting := range trafficRouting {
-		fmt.Fprintf(o.Out, tableFormat, "  -  Service: ", trafficRouting.Service)
+		fmt.Fprintf(o.IOStreams.Out, tableFormat, "  -  Service: ", trafficRouting.Service)
 		if trafficRouting.Ingress != nil {
-			fmt.Fprintln(o.Out, `     Ingress: `)
-			fmt.Fprintf(o.Out, tableFormat, "      classType: ", trafficRouting.Ingress.ClassType)
-			fmt.Fprintf(o.Out, tableFormat, "      name: ", trafficRouting.Ingress.Name)
+			fmt.Fprintln(o.IOStreams.Out, `     Ingress: `)
+			fmt.Fprintf(o.IOStreams.Out, tableFormat, "      classType: ", trafficRouting.Ingress.ClassType)
+			fmt.Fprintf(o.IOStreams.Out, tableFormat, "      name: ", trafficRouting.Ingress.Name)
 		}
 		if trafficRouting.Gateway != nil {
-			fmt.Fprintln(o.Out, `     Gateway: `)
-			fmt.Fprintf(o.Out, tableFormat, "      HttpRouteName: ", trafficRouting.Gateway.HTTPRouteName)
+			fmt.Fprintln(o.IOStreams.Out, `     Gateway: `)
+			fmt.Fprintf(o.IOStreams.Out, tableFormat, "      HttpRouteName: ", trafficRouting.Gateway.HTTPRouteName)
 		}
 		if trafficRouting.CustomNetworkRefs != nil {
-			fmt.Fprintln(o.Out, `     CustomNetworkRefs: `)
+			fmt.Fprintln(o.IOStreams.Out, `     CustomNetworkRefs: `)
 			for _, customNetworkRef := range trafficRouting.CustomNetworkRefs {
-				fmt.Fprintf(o.Out, tableFormat, "      name: ", customNetworkRef.Name)
-				fmt.Fprintf(o.Out, tableFormat, "      kind: ", customNetworkRef.Kind)
-				fmt.Fprintf(o.Out, tableFormat, "      apiVersion: ", customNetworkRef.APIVersion)
+				fmt.Fprintf(o.IOStreams.Out, tableFormat, "      name: ", customNetworkRef.Name)
+				fmt.Fprintf(o.IOStreams.Out, tableFormat, "      kind: ", customNetworkRef.Kind)
+				fmt.Fprintf(o.IOStreams.Out, tableFormat, "      apiVersion: ", customNetworkRef.APIVersion)
 			}
 		}
 	}
@@ -638,7 +638,7 @@ func (o *DescribeRolloutOptions) fetchAndPrintTrafficRoutingRef(ref string) {
 		Do()
 
 	if err := r.Err(); err != nil {
-		fmt.Fprintf(o.Out, "Error getting TrafficRoutingRef: %v\n", err)
+		fmt.Fprintf(o.IOStreams.Out, "Error getting TrafficRoutingRef: %v\n", err)
 		return
 	}
 
@@ -675,28 +675,28 @@ func (o *DescribeRolloutOptions) printRolloutInfo(rollout interface{}) {
 	info := extractRolloutInfo(rollout)
 
 	// Print basic info
-	fmt.Fprintf(o.Out, tableFormat, "Name:", info.Name)
-	fmt.Fprintf(o.Out, tableFormat, "Namespace:", info.Namespace)
+	fmt.Fprintf(o.IOStreams.Out, tableFormat, "Name:", info.Name)
+	fmt.Fprintf(o.IOStreams.Out, tableFormat, "Namespace:", info.Namespace)
 
 	if info.ObservedGeneration == info.Generation {
-		fmt.Fprintf(o.Out, tableFormat, "Status:", o.colorizeIcon(info.Phase)+" "+info.Phase)
+		fmt.Fprintf(o.IOStreams.Out, tableFormat, "Status:", o.colorizeIcon(info.Phase)+" "+info.Phase)
 		if info.Message != "" {
-			fmt.Fprintf(o.Out, tableFormat, "Message:", info.Message)
+			fmt.Fprintf(o.IOStreams.Out, tableFormat, "Message:", info.Message)
 		}
 	}
 
 	// Print strategy
-	fmt.Fprintf(o.Out, tableFormat, "Strategy:", info.StrategyType)
+	fmt.Fprintf(o.IOStreams.Out, tableFormat, "Strategy:", info.StrategyType)
 
 	if info.StrategyType == "Canary" {
-		fmt.Fprintf(o.Out, tableFormat, " Step:", strconv.Itoa(int(info.CurrentStepIndex))+"/"+strconv.Itoa(len(info.CanaryStrategy.Steps)))
-		fmt.Fprint(o.Out, " Steps:\n")
+		fmt.Fprintf(o.IOStreams.Out, tableFormat, " Step:", strconv.Itoa(int(info.CurrentStepIndex))+"/"+strconv.Itoa(len(info.CanaryStrategy.Steps)))
+		fmt.Fprint(o.IOStreams.Out, " Steps:\n")
 		o.printSteps(info)
 		o.printTrafficRouting(info.CanaryStrategy.TrafficRoutings)
 
 	} else if info.StrategyType == "BlueGreen" {
-		fmt.Fprintf(o.Out, tableFormat, " Step:", strconv.Itoa(int(info.CurrentStepIndex))+"/"+strconv.Itoa(len(info.BlueGreenStrategy.Steps)))
-		fmt.Fprint(o.Out, " Steps:\n")
+		fmt.Fprintf(o.IOStreams.Out, tableFormat, " Step:", strconv.Itoa(int(info.CurrentStepIndex))+"/"+strconv.Itoa(len(info.BlueGreenStrategy.Steps)))
+		fmt.Fprint(o.IOStreams.Out, " Steps:\n")
 		o.printSteps(info)
 		o.printTrafficRouting(info.BlueGreenStrategy.TrafficRoutings)
 	}
@@ -708,22 +708,22 @@ func (o *DescribeRolloutOptions) printRolloutInfo(rollout interface{}) {
 	// Print workload info
 	workloadInfo, err := o.GetResources(info.WorkloadRef)
 	if err != nil {
-		fmt.Fprintf(o.Out, "Error getting resources: %v\n", err)
+		fmt.Fprintf(o.IOStreams.Out, "Error getting resources: %v\n", err)
 		return
 	}
 
 	// Print images
 	for i, image := range workloadInfo.Images {
 		if i == 0 {
-			fmt.Fprintf(o.Out, tableFormat, "Images:", image)
+			fmt.Fprintf(o.IOStreams.Out, tableFormat, "Images:", image)
 		} else {
-			fmt.Fprintf(o.Out, tableFormat, "", image)
+			fmt.Fprintf(o.IOStreams.Out, tableFormat, "", image)
 		}
 	}
 
 	// Print revisions
-	fmt.Fprintf(o.Out, tableFormat, "Current Revision:", workloadInfo.CurrentRevision)
-	fmt.Fprintf(o.Out, tableFormat, "Update Revision:", workloadInfo.UpdateRevision)
+	fmt.Fprintf(o.IOStreams.Out, tableFormat, "Current Revision:", workloadInfo.CurrentRevision)
+	fmt.Fprintf(o.IOStreams.Out, tableFormat, "Update Revision:", workloadInfo.UpdateRevision)
 
 	// Print replicas
 	if info.ObservedGeneration == info.Generation {
@@ -748,46 +748,46 @@ func (o *DescribeRolloutOptions) printSteps(info *RolloutInfo) {
 	for i, step := range Steps {
 		isCurrentStep := (i + 1) == currentStepIndex
 		if isCurrentStep {
-			fmt.Fprint(o.Out, "\033[32m")
+			fmt.Fprint(o.IOStreams.Out, "\033[32m")
 		}
 
 		if step.Replicas != nil {
-			fmt.Fprintf(o.Out, tableFormat, "  -  Replicas: ", step.Replicas)
+			fmt.Fprintf(o.IOStreams.Out, tableFormat, "  -  Replicas: ", step.Replicas)
 		}
 		if step.Traffic != nil {
-			fmt.Fprintf(o.Out, tableFormat, "     Traffic: ", *step.Traffic)
+			fmt.Fprintf(o.IOStreams.Out, tableFormat, "     Traffic: ", *step.Traffic)
 		}
 
 		if len(step.Matches) > 0 {
-			fmt.Fprintln(o.Out, "     Matches: ")
+			fmt.Fprintln(o.IOStreams.Out, "     Matches: ")
 			for _, match := range step.Matches {
-				fmt.Fprintln(o.Out, "      - Headers: ")
+				fmt.Fprintln(o.IOStreams.Out, "      - Headers: ")
 				for _, header := range match.Headers {
-					fmt.Fprintf(o.Out, tableFormat, "       - Name:", header.Name)
-					fmt.Fprintf(o.Out, tableFormat, "         Value:", header.Value)
-					fmt.Fprintf(o.Out, tableFormat, "         Type:", *header.Type)
+					fmt.Fprintf(o.IOStreams.Out, tableFormat, "       - Name:", header.Name)
+					fmt.Fprintf(o.IOStreams.Out, tableFormat, "         Value:", header.Value)
+					fmt.Fprintf(o.IOStreams.Out, tableFormat, "         Type:", *header.Type)
 				}
 			}
 		}
 
 		if isCurrentStep {
-			fmt.Fprintf(o.Out, tableFormat, "     State:", info.CurrentStepState)
-			fmt.Fprint(o.Out, "\033[0m")
+			fmt.Fprintf(o.IOStreams.Out, tableFormat, "     State:", info.CurrentStepState)
+			fmt.Fprint(o.IOStreams.Out, "\033[0m")
 		}
 	}
 }
 
 func (o *DescribeRolloutOptions) printReplicas(info *WorkloadInfo) {
-	fmt.Fprint(o.Out, "Replicas:\n")
-	fmt.Fprintf(o.Out, tableFormat, " Desired:", info.Replicas.Desired)
-	fmt.Fprintf(o.Out, tableFormat, " Updated:", info.Replicas.Updated)
-	fmt.Fprintf(o.Out, tableFormat, " Current:", info.Replicas.Current)
-	fmt.Fprintf(o.Out, tableFormat, " Ready:", info.Replicas.Ready)
-	fmt.Fprintf(o.Out, tableFormat, " Available:", info.Replicas.Available)
+	fmt.Fprint(o.IOStreams.Out, "Replicas:\n")
+	fmt.Fprintf(o.IOStreams.Out, tableFormat, " Desired:", info.Replicas.Desired)
+	fmt.Fprintf(o.IOStreams.Out, tableFormat, " Updated:", info.Replicas.Updated)
+	fmt.Fprintf(o.IOStreams.Out, tableFormat, " Current:", info.Replicas.Current)
+	fmt.Fprintf(o.IOStreams.Out, tableFormat, " Ready:", info.Replicas.Ready)
+	fmt.Fprintf(o.IOStreams.Out, tableFormat, " Available:", info.Replicas.Available)
 }
 
 func (o *DescribeRolloutOptions) printPods(info *WorkloadInfo) {
-	w := tabwriter.NewWriter(o.Out, 0, 0, 2, ' ', 0)
+	w := tabwriter.NewWriter(o.IOStreams.Out, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "NAME\tREADY\tBATCH ID\tREVISION\tAGE\tRESTARTS\tSTATUS")
 
 	for _, pod := range info.Pod {

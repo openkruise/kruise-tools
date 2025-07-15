@@ -51,6 +51,7 @@ type RestartOptions struct {
 	EnforceNamespace bool
 
 	Filenames []string
+	Kustomize string
 	Out       io.Writer
 
 	resource.FilenameOptions
