@@ -1,0 +1,3 @@
+# Temporary exclusion - proxy/tokenizer vulnerabilities don't affect our usage
+CVE-2025-22870
+CVE-2025-22872
