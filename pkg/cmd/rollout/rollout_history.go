@@ -19,6 +19,7 @@ package rollout
 
 import (
 	"fmt"
+	"io"
 
 	internalapi "github.com/openkruise/kruise-tools/pkg/api"
 	internalpolymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
@@ -62,6 +63,9 @@ type RolloutHistoryOptions struct {
 
 	HistoryViewer    internalpolymorphichelpers.HistoryViewerFunc
 	RESTClientGetter genericclioptions.RESTClientGetter
+
+	Filenames []string
+	Out       io.Writer
 
 	resource.FilenameOptions
 	genericclioptions.IOStreams

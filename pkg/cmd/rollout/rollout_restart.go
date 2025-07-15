@@ -18,6 +18,7 @@ package rollout
 
 import (
 	"fmt"
+	"io"
 
 	kruiseappsv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	kruiseappsv1beta1 "github.com/openkruise/kruise-api/apps/v1beta1"
@@ -48,6 +49,9 @@ type RestartOptions struct {
 	Restarter        internalpolymorphichelpers.ObjectRestarterFunc
 	Namespace        string
 	EnforceNamespace bool
+
+	Filenames []string
+	Out       io.Writer
 
 	resource.FilenameOptions
 	genericclioptions.IOStreams

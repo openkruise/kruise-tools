@@ -18,6 +18,7 @@ package rollout
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/types"
@@ -48,6 +49,9 @@ type ApproveOptions struct {
 	Approver         internalpolymorphichelpers.ObjectApproverFunc
 	Namespace        string
 	EnforceNamespace bool
+
+	Filenames []string
+	Out       io.Writer
 
 	resource.FilenameOptions
 	genericclioptions.IOStreams

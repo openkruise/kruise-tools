@@ -19,6 +19,7 @@ package rollout
 import (
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	internalapi "github.com/openkruise/kruise-tools/pkg/api"
@@ -84,6 +85,9 @@ type RolloutStatusOptions struct {
 	Builder        func() *resource.Builder
 	DynamicClient  dynamic.Interface
 	ClientSet      kubernetes.Interface
+
+	Filenames []string
+	Out       io.Writer
 
 	FilenameOptions *resource.FilenameOptions
 	genericclioptions.IOStreams

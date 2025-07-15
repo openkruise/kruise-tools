@@ -207,11 +207,12 @@ func (c *control) addEventHandler(gvk schema.GroupVersionKind) error {
 		if err != nil {
 			return fmt.Errorf("failed to get informer for %v: %v", gvk, err)
 		}
-		if gvk == api.DeploymentKind {
+		switch gvk {
+		case api.DeploymentKind:
 			informer.AddEventHandler(&deploymentHandler{ctrl: c})
-		} else if gvk == api.CloneSetKind {
+		case api.CloneSetKind:
 			informer.AddEventHandler(&cloneSetHandler{ctrl: c})
-		} else {
+		default:
 			return fmt.Errorf("unsupported gvk %v", gvk)
 		}
 		c.handledGVKs[gvk] = struct{}{}
@@ -252,7 +253,7 @@ func (c *control) reconcile(ID types.UID) error {
 		c.finishTask(task, migration.MigrateSucceeded, "")
 		return nil
 	} else if task.opts.TimeoutSeconds != nil && time.Since(task.creationTimestamp.Time) > time.Duration(*task.opts.TimeoutSeconds)*time.Second {
-		c.finishTask(task, migration.MigrateFailed, fmt.Sprintf("task timeout exceeded"))
+		c.finishTask(task, migration.MigrateFailed, "task timeout exceeded")
 		return nil
 	}
 

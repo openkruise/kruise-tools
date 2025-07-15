@@ -18,6 +18,7 @@ package rollout
 
 import (
 	"fmt"
+	"io"
 
 	internalapi "github.com/openkruise/kruise-tools/pkg/api"
 	internalpolymorphichelpers "github.com/openkruise/kruise-tools/pkg/internal/polymorphichelpers"
@@ -46,6 +47,9 @@ type PauseOptions struct {
 	Namespace        string
 	EnforceNamespace bool
 	Resources        []string
+
+	Filenames []string
+	Out       io.Writer
 
 	resource.FilenameOptions
 	genericclioptions.IOStreams

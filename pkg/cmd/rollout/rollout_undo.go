@@ -19,6 +19,7 @@ package rollout
 
 import (
 	"fmt"
+	"io"
 
 	rolloutsapiv1alpha1 "github.com/openkruise/kruise-rollout-api/rollouts/v1alpha1"
 	rolloutsapiv1beta1 "github.com/openkruise/kruise-rollout-api/rollouts/v1beta1"
@@ -54,6 +55,9 @@ type UndoOptions struct {
 	RESTClientGetter genericclioptions.RESTClientGetter
 
 	Fast bool // fast rollback for blue-green
+
+	Filenames []string
+	Out       io.Writer
 
 	resource.FilenameOptions
 	genericclioptions.IOStreams
