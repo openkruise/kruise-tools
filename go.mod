@@ -20,6 +20,7 @@ require (
 	k8s.io/component-base v0.30.11
 	k8s.io/klog/v2 v2.120.1
 	k8s.io/kubectl v0.30.11
+	k8s.io/metrics v0.30.11
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
 	sigs.k8s.io/controller-runtime v0.18.6
 	sigs.k8s.io/kustomize/api v0.13.5-0.20230601165947-6ce0bf390ce3
