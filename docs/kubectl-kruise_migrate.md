@@ -23,6 +23,15 @@ kubectl-kruise migrate [DST_KIND] --from [SRC_KIND] [flags]
 	# Migrate replicas from an existing Deployment to an existing CloneSet.
 	kubectl-kruise migrate CloneSet --from Deployment -n default --src-name cloneset-name --dst-name deployment-name --replicas 10 --max-surge=2
 
+    # Create an empty AdvancedStatefulSet from an existing StatefulSet.
+    kubectl-kruise migrate AdvancedStatefulSet --from StatefulSet -n default --dst-name ass-name --create
+
+    # Create an AdvancedStatefulSet copying current pod count.
+    kubectl-kruise migrate AdvancedStatefulSet --from StatefulSet -n default --dst-name ass-name --create --copy
+
+    # Migrate pods from an existing StatefulSet to an AdvancedStatefulSet.
+    kubectl-kruise migrate AdvancedStatefulSet --from StatefulSet -n default --src-name ss-name --dst-name ass-name --max-surge=1
+
 ```
 
 ### Options

@@ -115,16 +115,22 @@ func (o *migrateOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []
 	case "CloneSet", "cloneset", "clone":
 		o.To = "CloneSet"
 		o.DstRef = api.NewCloneSetRef(namespace, o.DstName)
+	case "AdvancedStatefulSet", "advancedstatefulset", "ass":
+		o.To = "AdvancedStatefulSet"
+		o.DstRef = api.NewAdvancedStatefulSetRef(namespace, o.DstName)
 	default:
-		return fmt.Errorf("currently only supported CloneSet as dst type")
+		return fmt.Errorf("currently only supported CloneSet and AdvancedStatefulSet as dst types")
 	}
 
 	switch o.From {
 	case "Deployment", "deployment":
 		o.From = "Deployment"
 		o.SrcRef = api.NewDeploymentRef(namespace, o.SrcName)
+	case "StatefulSet", "statefulset", "ss":
+		o.From = "StatefulSet"
+		o.SrcRef = api.NewStatefulSetRef(namespace, o.SrcName)
 	default:
-		return fmt.Errorf("currently only supported Deployment as src type")
+		return fmt.Errorf("currently only supported Deployment and StatefulSet as src types")
 	}
 
 	return nil
@@ -134,6 +140,8 @@ func (o *migrateOptions) Run(f cmdutil.Factory, cmd *cobra.Command) error {
 	switch o.To {
 	case "CloneSet":
 		return o.migrateCloneSet(f, cmd)
+	case "AdvancedStatefulSet":
+		return o.migrateStatefulSet(f, cmd)
 	}
 	return nil
 }
