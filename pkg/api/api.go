@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/kubectl/pkg/scheme"
 )
@@ -33,6 +34,10 @@ import (
 var (
 	DeploymentKind = apps.SchemeGroupVersion.WithKind("Deployment")
 	CloneSetKind   = kruiseappsv1alpha1.SchemeGroupVersion.WithKind("CloneSet")
+	// DaemonSetKind is the native apps/v1 DaemonSet
+	DaemonSetKind = apps.SchemeGroupVersion.WithKind("DaemonSet")
+	// AdvancedDaemonSetKind is the apps.kruise.io/v1alpha1 DaemonSet CRD
+	AdvancedDaemonSetKind = kruiseappsv1alpha1.SchemeGroupVersion.WithKind("DaemonSet")
 )
 
 var Scheme = scheme.Scheme
@@ -82,6 +87,24 @@ func NewCloneSetRef(namespace, name string) ResourceRef {
 	return ResourceRef{
 		APIVersion: CloneSetKind.GroupVersion().String(),
 		Kind:       CloneSetKind.Kind,
+		Namespace:  namespace,
+		Name:       name,
+	}
+}
+
+func NewDaemonSetRef(namespace, name string) ResourceRef {
+	return ResourceRef{
+		APIVersion: DaemonSetKind.GroupVersion().String(),
+		Kind:       DaemonSetKind.Kind,
+		Namespace:  namespace,
+		Name:       name,
+	}
+}
+
+func NewAdvancedDaemonSetRef(namespace, name string) ResourceRef {
+	return ResourceRef{
+		APIVersion: AdvancedDaemonSetKind.GroupVersion().String(),
+		Kind:       AdvancedDaemonSetKind.Kind,
 		Namespace:  namespace,
 		Name:       name,
 	}
