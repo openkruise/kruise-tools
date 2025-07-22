@@ -23,6 +23,12 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// hooks to allow injection of failures in unit tests
+var (
+	coreNewForConfig   = kubernetes.NewForConfig
+	kruiseNewForConfig = kruiseclientsets.NewForConfig
+)
+
 // historyViewer Returns a HistoryViewer for viewing change history
 func historyViewer(restClientGetter genericclioptions.RESTClientGetter, mapping *meta.RESTMapping) (HistoryViewer, error) {
 	clientConfig, err := restClientGetter.ToRESTConfig()
@@ -30,12 +36,12 @@ func historyViewer(restClientGetter genericclioptions.RESTClientGetter, mapping 
 		return nil, err
 	}
 
-	external, err := kubernetes.NewForConfig(clientConfig)
+	external, err := coreNewForConfig(clientConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	kruiseExternal, err := kruiseclientsets.NewForConfig(clientConfig)
+	kruiseExternal, err := kruiseNewForConfig(clientConfig)
 	if err != nil {
 		return nil, err
 	}
