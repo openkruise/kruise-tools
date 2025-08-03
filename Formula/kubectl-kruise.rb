@@ -1,18 +1,28 @@
 class KubectlKruise < Formula
   desc "kubectl plugin for OpenKruise"
   homepage "https://openkruise.io/"
-  version "1.2.2"
+  url "https://github.com/openkruise/kruise-tools/releases/download/v1.2.2/kubectl-kruise-darwin-amd64-v1.2.2.tar.gz"
+  sha256 "bfb978a55a8048a4b41b02ce9afec2f1e74718998e3a549dfd0a89f95dcec98b"
   license "Apache-2.0"
 
-  on_macos do
-    on_intel do
-      url "https://github.com/openkruise/kruise-tools/releases/download/v1.2.2/kubectl-kruise-darwin-amd64-v1.2.2.tar.gz"
-      sha256 "bfb978a55a8048a4b41b02ce9afec2f1e74718998e3a549dfd0a89f95dcec98b"
-    end
+  depends_on "kubernetes-cli"
 
+  on_macos do
     on_arm do
       url "https://github.com/openkruise/kruise-tools/releases/download/v1.2.2/kubectl-kruise-darwin-arm64-v1.2.2.tar.gz"
       sha256 "9be1ff3d3a86dc28db3f4513462a3f43536f8beb60b536c3a678b9c3387afed0"
+    end
+  end
+
+  on_linux do
+    on_intel do
+      url "https://github.com/openkruise/kruise-tools/releases/download/v1.2.2/kubectl-kruise-linux-amd64-v1.2.2.tar.gz"
+      sha256 "b1d98b04bf9bfb615c0abf60c640cd60b3af308ff16ef3019f6795bcadb27328"
+    end
+
+    on_arm do
+      url "https://github.com/openkruise/kruise-tools/releases/download/v1.2.2/kubectl-kruise-linux-arm64-v1.2.2.tar.gz"
+      sha256 "4b96e9e27407208216ee3569ebe947512f49c2040f7c4d6eaedc830b76a2f689"
     end
   end
 
