@@ -4,26 +4,14 @@ kubectl plugin for OpenKruise
 [Kruise-tools](https://github.com/openkruise/kruise-tools) provides commandline tools for kruise features, such as `kubectl-kruise`, which is a standard plugin of `kubectl`.
 
 ## Install
-
-### Install via Homebrew
-
-#### Option 1: Homebrew Tap
-1. Add the tap and install:
-
-```bash
-$ brew tap openkruise/kruise-tools
-$ brew install kubectl-kruise
-```
-
-#### Option 2: Homebrew Core
+### Install via Homebrew (macOS)
+1. Install using Homebrew:
 
 ```bash
 $ brew install kubectl-kruise
 ```
 
-**Supported platforms**: macOS (Intel/Apple Silicon) and Linux (Intel/ARM64)
-
-2. Then you can use it with `kubectl-kruise` or `kubectl kruise`:
+2. Then you can use it with `kubectl-kruise` or `kubectl kruise`.
 
 ```bash
 $ kubectl-kruise --help
@@ -66,8 +54,8 @@ $ kubectl kruise --help
 ```
 
 ## Upgrade
-### Upgrade via Homebrew
-Run `brew upgrade kubectl-kruise` to upgrade kruise plugin via Homebrew (works with both tap and core installations).
+### Upgrade via Homebrew (macOS)
+Run `brew upgrade kubectl-kruise` to upgrade kruise plugin via Homebrew.
 
 ### Upgrade via krew
 Run `kubectl krew upgrade kruise` to upgrade kruise plugin via Krew.
