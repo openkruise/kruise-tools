@@ -142,6 +142,7 @@ func NewCmdCreate(f cmdutil.Factory, ioStreams genericclioptions.IOStreams) *cob
 	cmd.AddCommand(NewCmdCreateJob(f, ioStreams))
 	cmd.AddCommand(NewCmdCreateBroadcastJob(f, ioStreams))
 	cmd.AddCommand(NewCmdCreateCRR(f, ioStreams))
+	cmd.AddCommand(NewCmdCreatePodUnavailableBudget(f, ioStreams))
 	return cmd
 }
 
