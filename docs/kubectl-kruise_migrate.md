@@ -10,6 +10,7 @@ Migrate from K8s original workloads to Kruise workloads
 kubectl-kruise migrate [DST_KIND] --from [SRC_KIND] [flags]
 ```
 
+
 ### Examples
 
 ```
@@ -23,11 +24,16 @@ kubectl-kruise migrate [DST_KIND] --from [SRC_KIND] [flags]
 	# Migrate replicas from an existing Deployment to an existing CloneSet.
 	kubectl-kruise migrate CloneSet --from Deployment -n default --src-name cloneset-name --dst-name deployment-name --replicas 10 --max-surge=2
 
+    # Migrate pods from an existing DaemonSet to an AdvancedDaemonSet.
+    kubectl-kruise migrate AdvancedDaemonSet --from DaemonSet -n default --src-name ds-name --dst-name ads-name --max-surge=1
+
 ```
+
 
 ### Options
 
 ```
+
       --copy                    Copy replicas from src workload when create.
       --create                  Create dst workload with replicas=0 from src workload.
       --dst-name string         Name of the destination workload.
@@ -39,9 +45,11 @@ kubectl-kruise migrate [DST_KIND] --from [SRC_KIND] [flags]
       --timeout-seconds int32   Timeout seconds for migration, -1 indicates no limited. (default -1)
 ```
 
+
 ### Options inherited from parent commands
 
 ```
+
       --as string                      Username to impersonate for the operation. User could be a regular user or a service account in a namespace.
       --as-group stringArray           Group to impersonate for the operation, this flag can be repeated to specify multiple groups.
       --as-uid string                  UID to impersonate for the operation.
